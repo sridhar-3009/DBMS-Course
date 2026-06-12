@@ -248,6 +248,42 @@
     </div>
   </div>
 
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 230" role="img" aria-label="Relational model: two tables joined on a foreign key, producing a result set">
+      <!-- employees table -->
+      <rect x="30" y="30" width="180" height="140" rx="8" class="svg-box-c"/>
+      <rect x="30" y="30" width="180" height="30" rx="8" class="svg-box-c" style="fill:#0EA5E9;opacity:.85"/>
+      <text x="120" y="51" text-anchor="middle" class="svg-label" style="fill:#fff">employees</text>
+      <text x="120" y="82"  text-anchor="middle" class="svg-soft">PK emp_id</text>
+      <text x="120" y="100" text-anchor="middle" class="svg-soft">name</text>
+      <text x="120" y="118" text-anchor="middle" class="svg-soft">FK dept_id</text>
+      <text x="120" y="136" text-anchor="middle" class="svg-soft">salary</text>
+      <!-- departments table -->
+      <rect x="490" y="30" width="180" height="120" rx="8" class="svg-box-p"/>
+      <rect x="490" y="30" width="180" height="30" rx="8" class="svg-box-p" style="fill:#7C3AED;opacity:.85"/>
+      <text x="580" y="51" text-anchor="middle" class="svg-label" style="fill:#fff">departments</text>
+      <text x="580" y="82"  text-anchor="middle" class="svg-soft">PK dept_id</text>
+      <text x="580" y="100" text-anchor="middle" class="svg-soft">dept_name</text>
+      <text x="580" y="118" text-anchor="middle" class="svg-soft">budget</text>
+      <!-- FK reference arrow -->
+      <line x1="210" y1="118" x2="490" y2="82" class="svg-line svg-dash" style="stroke:#F59E0B"/>
+      <text x="350" y="90" text-anchor="middle" class="svg-soft" style="fill:#F59E0B">FK dept_id = PK dept_id</text>
+      <!-- result table -->
+      <rect x="200" y="168" width="300" height="48" rx="8" class="svg-box-g"/>
+      <text x="350" y="188" text-anchor="middle" class="svg-label">JOIN Result Set</text>
+      <text x="350" y="206" text-anchor="middle" class="svg-soft">emp_id, name, dept_name, salary</text>
+      <!-- lines from tables to result -->
+      <line x1="120" y1="170" x2="280" y2="168" class="svg-line"/>
+      <line x1="580" y1="150" x2="420" y2="168" class="svg-line"/>
+      <!-- Animated packets -->
+      <circle class="pkt" cx="210" cy="118" r="5" fill="#F59E0B"/>
+      <circle class="pkt" cx="350" cy="90"  r="5" fill="#F59E0B"/>
+      <circle class="pkt" cx="120" cy="140" r="5" fill="#0EA5E9"/>
+      <circle class="pkt" cx="580" cy="140" r="5" fill="#7C3AED"/>
+    </svg>
+    <p class="diagram-caption">A foreign key in employees references the primary key in departments. The JOIN operation walks that reference to stitch the two relations together into a flat result set.</p>
+  </div>
+
   <div class="demo-section" id="demo-relational">
     <div class="demo-header">
       <h3>Relational Join Demo</h3>

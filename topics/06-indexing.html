@@ -286,6 +286,63 @@
   <h2 class="section-title">B+Tree Traversal</h2>
   <p class="section-desc">Enter a search key and watch the B+tree traversal animate — root to internal node to leaf. Toggle the index off to see the full table scan comparison.</p>
 
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 230" role="img" aria-label="B+Tree structure: root, internal nodes, leaf nodes with sibling pointers">
+      <!-- Root -->
+      <rect x="265" y="10" width="170" height="42" rx="8" class="svg-box-p"/>
+      <text x="350" y="28"  text-anchor="middle" class="svg-label">Root</text>
+      <text x="350" y="45"  text-anchor="middle" class="svg-mono">[ 40 | 80 ]</text>
+      <!-- Internal left -->
+      <rect x="80"  y="90" width="150" height="42" rx="8" class="svg-box-c"/>
+      <text x="155" y="108" text-anchor="middle" class="svg-label">Internal</text>
+      <text x="155" y="125" text-anchor="middle" class="svg-mono">[ 20 | 30 ]</text>
+      <!-- Internal mid -->
+      <rect x="275" y="90" width="150" height="42" rx="8" class="svg-box-c"/>
+      <text x="350" y="108" text-anchor="middle" class="svg-label">Internal</text>
+      <text x="350" y="125" text-anchor="middle" class="svg-mono">[ 50 | 65 ]</text>
+      <!-- Internal right -->
+      <rect x="470" y="90" width="150" height="42" rx="8" class="svg-box-c"/>
+      <text x="545" y="108" text-anchor="middle" class="svg-label">Internal</text>
+      <text x="545" y="125" text-anchor="middle" class="svg-mono">[ 85 | 95 ]</text>
+      <!-- Root -> internal edges -->
+      <line x1="310" y1="52" x2="210" y2="90" class="svg-line"/>
+      <line x1="350" y1="52" x2="350" y2="90" class="svg-line"/>
+      <line x1="390" y1="52" x2="490" y2="90" class="svg-line"/>
+      <!-- Leaf row -->
+      <rect x="15"  y="173" width="110" height="42" rx="8" class="svg-box-g"/>
+      <text x="70"  y="191" text-anchor="middle" class="svg-label">Leaf</text>
+      <text x="70"  y="208" text-anchor="middle" class="svg-mono">[10|15|18]</text>
+      <rect x="143" y="173" width="110" height="42" rx="8" class="svg-box-g"/>
+      <text x="198" y="191" text-anchor="middle" class="svg-label">Leaf</text>
+      <text x="198" y="208" text-anchor="middle" class="svg-mono">[20|25|30]</text>
+      <rect x="271" y="173" width="110" height="42" rx="8" class="svg-box-g"/>
+      <text x="326" y="191" text-anchor="middle" class="svg-label">Leaf</text>
+      <text x="326" y="208" text-anchor="middle" class="svg-mono">[40|50|60]</text>
+      <rect x="399" y="173" width="110" height="42" rx="8" class="svg-box-g"/>
+      <text x="454" y="191" text-anchor="middle" class="svg-label">Leaf</text>
+      <text x="454" y="208" text-anchor="middle" class="svg-mono">[65|70|75]</text>
+      <rect x="527" y="173" width="150" height="42" rx="8" class="svg-box-g"/>
+      <text x="602" y="191" text-anchor="middle" class="svg-label">Leaf</text>
+      <text x="602" y="208" text-anchor="middle" class="svg-mono">[80|85|95|99]</text>
+      <!-- Internal -> leaf edges -->
+      <line x1="120" y1="132" x2="70"  y2="173" class="svg-line"/>
+      <line x1="155" y1="132" x2="198" y2="173" class="svg-line"/>
+      <line x1="315" y1="132" x2="326" y2="173" class="svg-line"/>
+      <line x1="350" y1="132" x2="454" y2="173" class="svg-line"/>
+      <line x1="510" y1="132" x2="602" y2="173" class="svg-line"/>
+      <!-- Sibling pointers (leaf linked list) -->
+      <line x1="125" y1="194" x2="143" y2="194" class="svg-line-p svg-dash"/>
+      <line x1="253" y1="194" x2="271" y2="194" class="svg-line-p svg-dash"/>
+      <line x1="381" y1="194" x2="399" y2="194" class="svg-line-p svg-dash"/>
+      <line x1="509" y1="194" x2="527" y2="194" class="svg-line-p svg-dash"/>
+      <!-- Packets descending from root -->
+      <circle class="pkt" cx="350" cy="52"  r="5" fill="#8B5CF6"/>
+      <circle class="pkt" cx="155" cy="132" r="5" fill="#0EA5E9"/>
+      <circle class="pkt" cx="70"  cy="173" r="5" fill="#10B981"/>
+    </svg>
+    <p class="diagram-caption">B+tree search is O(log N) — at most 3-4 page reads for a billion-row table. All values live in leaves, linked in sorted order for efficient range scans. Internal nodes only store routing keys.</p>
+  </div>
+
   <div class="demo-section" id="demo-index">
     <div class="demo-header">
       <h3>B+Tree Index Search</h3>

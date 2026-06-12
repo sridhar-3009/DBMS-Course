@@ -1,8 +1,8 @@
 'use strict';
 
 /* =============================================================
-   DBMS Illustrated — main.js  v3.0
-   Theme / Reading Progress / Scroll Reveals / Quiz / Q&A / Hero
+   DBMS Illustrated — main.js  v4.0
+   Theme / Progress / Reveals / Quiz / QA / Three.js Hero / SVG packets
    ============================================================= */
 
 const THEME_KEY = 'dbms-theme';
@@ -44,16 +44,10 @@ function initScrollReveals() {
   if (!els.length) return;
   const io = new IntersectionObserver((entries) => {
     entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible');
-        io.unobserve(e.target);
-      }
+      if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
     });
   }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
-  els.forEach(el => {
-    el.classList.add('reveal');
-    io.observe(el);
-  });
+  els.forEach(el => { el.classList.add('reveal'); io.observe(el); });
 }
 
 // ── Quiz ─────────────────────────────────────────────────────
@@ -117,7 +111,6 @@ function initDemos() {
 }
 
 // ── Shared canvas utilities ───────────────────────────────────
-// HiDPI canvas setup
 window.setupCanvas = function(canvas) {
   const dpr  = Math.min(window.devicePixelRatio || 1, 2);
   const rect = canvas.getBoundingClientRect();
@@ -128,13 +121,11 @@ window.setupCanvas = function(canvas) {
   return { ctx, w: rect.width, h: rect.height, dpr };
 };
 
-// Visibility-aware animation loop using IntersectionObserver
 window.makeVisibleLoop = function(canvas, drawFn) {
   let raf = null, visible = false, last = performance.now();
   const tick = (now) => {
     if (!visible) { raf = null; return; }
-    const dt = Math.min(50, now - last);
-    last = now;
+    const dt = Math.min(50, now - last); last = now;
     drawFn(now, dt);
     raf = requestAnimationFrame(tick);
   };
@@ -151,10 +142,9 @@ window.makeVisibleLoop = function(canvas, drawFn) {
   io.observe(canvas);
 };
 
-// 3D isometric projection
 window.iso = function(x, y, z, cx, cy, scale, rotY, tiltX) {
-  const ry  = (rotY  === undefined) ? 0.60 : rotY;
-  const tx  = (tiltX === undefined) ? 0.55 : tiltX;
+  const ry = (rotY  === undefined) ? 0.60 : rotY;
+  const tx = (tiltX === undefined) ? 0.55 : tiltX;
   const cosY = Math.cos(ry), sinY = Math.sin(ry);
   const xr  = x * cosY - y * sinY;
   const yr  = x * sinY + y * cosY;
@@ -164,75 +154,302 @@ window.iso = function(x, y, z, cx, cy, scale, rotY, tiltX) {
   return { x: cx + xr * scale, y: cy + yr2 * scale, depth: zr2 };
 };
 
-// ── Hero: 3D query-cost surface + gradient-descent ball ──────
+// ── SVG packet animation (ported from SDC) ───────────────────
+function initDiagramPackets() {
+  function eio(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+  document.querySelectorAll('.diagram-box svg').forEach(function(svg) {
+    const pkts  = Array.from(svg.querySelectorAll('.pkt'));
+    const lines = Array.from(svg.querySelectorAll('line'));
+    if (!pkts.length || !lines.length) return;
+
+    // For each packet, find closest line endpoint and assign a travel path
+    const animData = pkts.map(function(pkt, i) {
+      const cx0 = parseFloat(pkt.getAttribute('cx') || 0);
+      const cy0 = parseFloat(pkt.getAttribute('cy') || 0);
+      let best = null, bestDist = Infinity;
+      lines.forEach(function(l) {
+        const x1 = parseFloat(l.getAttribute('x1')), y1 = parseFloat(l.getAttribute('y1'));
+        const x2 = parseFloat(l.getAttribute('x2')), y2 = parseFloat(l.getAttribute('y2'));
+        const d = Math.min(
+          (cx0-x1)*(cx0-x1)+(cy0-y1)*(cy0-y1),
+          (cx0-x2)*(cx0-x2)+(cy0-y2)*(cy0-y2)
+        );
+        if (d < bestDist) { bestDist = d; best = l; }
+      });
+      if (!best) return null;
+      const x1 = parseFloat(best.getAttribute('x1')), y1 = parseFloat(best.getAttribute('y1'));
+      const x2 = parseFloat(best.getAttribute('x2')), y2 = parseFloat(best.getAttribute('y2'));
+      return { pkt, x1, y1, x2, y2, phase: i * 0.38, speed: 0.26 + (i % 5) * 0.06 };
+    }).filter(Boolean);
+
+    if (!animData.length) return;
+
+    const t0 = performance.now();
+    function tick(now) {
+      const elapsed = (now - t0) * 0.001;
+      animData.forEach(function(a) {
+        const raw = (elapsed * a.speed + a.phase) % 1;
+        const alpha = raw < 0.08 ? raw / 0.08 : raw > 0.9 ? (1 - raw) / 0.1 : 1;
+        const ease  = eio(raw);
+        a.pkt.setAttribute('cx', a.x1 + (a.x2 - a.x1) * ease);
+        a.pkt.setAttribute('cy', a.y1 + (a.y2 - a.y1) * ease);
+        a.pkt.setAttribute('opacity', (alpha * 0.9).toFixed(3));
+      });
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── Hero: Three.js 3D DBMS architecture ──────────────────────
 function initHero() {
   const canvas = document.getElementById('hero-canvas');
   if (!canvas) return;
 
-  let W, H, ctx, dpr;
+  if (!window.THREE) { setTimeout(initHero, 150); return; }
+  const T = window.THREE;
+
+  // ── Scene ─────────────────────────────────────────────────
+  const scene = new T.Scene();
+  scene.background = new T.Color(0x05030e);
+  scene.fog = new T.FogExp2(0x05030e, 0.028);
+
+  // ── Camera ────────────────────────────────────────────────
+  const camera = new T.PerspectiveCamera(48, 1, 0.1, 120);
+  camera.position.set(4.5, 2.2, 11.5);
+  camera.lookAt(0, 0, 0);
+
+  // ── Renderer ──────────────────────────────────────────────
+  const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
 
   function resize() {
-    const parent = canvas.parentElement;
-    W   = parent.offsetWidth  || 640;
-    H   = parent.offsetHeight || window.innerHeight;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width  = Math.floor(W * dpr);
-    canvas.height = Math.floor(H * dpr);
-    ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const p = canvas.parentElement;
+    const W = p.offsetWidth  || 640;
+    const H = p.offsetHeight || window.innerHeight;
+    renderer.setSize(W, H);
+    camera.aspect = W / H;
+    camera.updateProjectionMatrix();
   }
   resize();
   window.addEventListener('resize', resize, { passive: true });
 
-  // ── Surface: query-cost landscape (bowl + data-wave perturbations) ──
-  const N     = 28;
-  const RANGE = 1.25;
-  const STEP  = (2 * RANGE) / (N - 1);
+  // ── Lighting ──────────────────────────────────────────────
+  scene.add(new T.AmbientLight(0x7C3AED, 0.45));
+  const sun = new T.DirectionalLight(0xffffff, 0.65);
+  sun.position.set(4, 8, 6);
+  scene.add(sun);
 
-  function surfaceZ(x, y, t) {
-    return 0.54 * (x * x + y * y)
-      - 0.11 * Math.sin(x * 2.8 + t * 0.78)
-      - 0.09 * Math.cos(y * 2.2 - t * 0.64)
-      + 0.06 * Math.sin((x + y) * 1.9 + t * 0.42);
+  // ── Grid floor ────────────────────────────────────────────
+  const grid = new T.GridHelper(24, 24, 0x3b1d8c, 0x1a1030);
+  grid.position.y = -6.5;
+  grid.material.opacity = 0.35;
+  grid.material.transparent = true;
+  scene.add(grid);
+
+  // ── DBMS architecture nodes ────────────────────────────────
+  const ARCH = [
+    { id:'client',  label:'CLIENT',       sub:'Application',    color:'#06B6D4', hex:0x06B6D4, pos:[  0,  5.0,  0.8] },
+    { id:'parser',  label:'SQL PARSER',   sub:'Tokenize + AST', color:'#8B5CF6', hex:0x8B5CF6, pos:[  0,  3.0, -0.6] },
+    { id:'opt',     label:'OPTIMIZER',    sub:'Cost-based plan',color:'#7C3AED', hex:0x7C3AED, pos:[  0,  1.0,  0.5] },
+    { id:'buf',     label:'BUFFER POOL',  sub:'LRU page cache', color:'#F59E0B', hex:0xF59E0B, pos:[-3.2,-1.0,  1.5] },
+    { id:'txn',     label:'TX MANAGER',   sub:'ACID + 2PL',     color:'#A78BFA', hex:0xA78BFA, pos:[ 3.2,-1.0, -0.5] },
+    { id:'db',      label:'PRIMARY DB',   sub:'PostgreSQL',     color:'#10B981', hex:0x10B981, pos:[  0, -3.0,  0.2] },
+    { id:'wal',     label:'WAL',          sub:'Write-Ahead Log',color:'#EF4444', hex:0xEF4444, pos:[-2.5,-5.0,  0.8] },
+    { id:'replica', label:'READ REPLICA', sub:'Async replication',color:'#14B8A6',hex:0x14B8A6,pos:[ 2.5,-5.0, -0.4] },
+  ];
+
+  const EDGES = [
+    ['client','parser'], ['parser','opt'],
+    ['opt','buf'], ['opt','txn'],
+    ['buf','db'],  ['txn','db'],
+    ['db','wal'],  ['db','replica'],
+  ];
+
+  const nodeMap   = {};
+  const edgeCurves = [];
+  let camAngle    = 0;
+
+  // Canvas-texture label for 3D box face
+  function makeLabel(label, sub, color) {
+    const c = document.createElement('canvas');
+    c.width = 288; c.height = 96;
+    const cx = c.getContext('2d');
+    cx.fillStyle = 'rgba(10,6,24,0.96)';
+    cx.beginPath();
+    if (cx.roundRect) cx.roundRect(0, 0, 288, 96, 10); else cx.rect(0, 0, 288, 96);
+    cx.fill();
+    cx.fillStyle = color; cx.fillRect(0, 0, 288, 4);
+    cx.strokeStyle = color; cx.lineWidth = 1.5; cx.globalAlpha = 0.85;
+    cx.beginPath();
+    if (cx.roundRect) cx.roundRect(1, 1, 286, 94, 9); else cx.rect(1, 1, 286, 94);
+    cx.stroke();
+    cx.globalAlpha = 1;
+    cx.fillStyle = '#EDE9FE'; cx.font = 'bold 17px monospace';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(label, 144, 42);
+    cx.fillStyle = 'rgba(148,144,180,0.80)'; cx.font = '12px monospace';
+    cx.fillText(sub, 144, 67);
+    return new T.CanvasTexture(c);
   }
 
-  // ── Ball (query optimizer) ────────────────────────────────
-  const ball = {
-    x:  (Math.random() - 0.5) * RANGE * 1.6,
-    y:  (Math.random() - 0.5) * RANGE * 1.6,
-    vx: (Math.random() - 0.5) * 0.04,
-    vy: (Math.random() - 0.5) * 0.04,
-  };
-  const trail    = [];
-  const TRAIL_MAX = 55;
-
-  function resetBall() {
-    ball.x  = (Math.random() - 0.5) * RANGE * 1.7;
-    ball.y  = (Math.random() - 0.5) * RANGE * 1.7;
-    ball.vx = (Math.random() - 0.5) * 0.06;
-    ball.vy = (Math.random() - 0.5) * 0.06;
-    trail.length = 0;
+  // Radial glow sprite
+  function makeGlow(hexStr, size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const cx = c.getContext('2d');
+    const r = parseInt(hexStr.slice(1,3),16), g = parseInt(hexStr.slice(3,5),16), b = parseInt(hexStr.slice(5,7),16);
+    const gr = cx.createRadialGradient(64,64,0,64,64,64);
+    gr.addColorStop(0,   `rgba(${r},${g},${b},0.6)`);
+    gr.addColorStop(0.35,`rgba(${r},${g},${b},0.2)`);
+    gr.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+    cx.fillStyle = gr; cx.fillRect(0,0,128,128);
+    const mat = new T.SpriteMaterial({
+      map: new T.CanvasTexture(c),
+      transparent: true, blending: T.AdditiveBlending, depthWrite: false
+    });
+    const sp = new T.Sprite(mat);
+    sp.scale.set(size, size, 1);
+    return sp;
   }
 
-  // ── Floating particles ────────────────────────────────────
-  const PARTS = Array.from({ length: 80 }, () => ({
-    gx:    (Math.random() - 0.5) * 3.4,
-    gy:    (Math.random() - 0.5) * 3.4,
-    gz:    (Math.random() - 0.5) * 2.0,
-    alpha: 0.15 + Math.random() * 0.5,
-    phase: Math.random() * Math.PI * 2,
-    freq:  0.55 + Math.random() * 0.9,
-  }));
+  // Build node groups
+  ARCH.forEach(d => {
+    const group = new T.Group();
+    group.position.set(d.pos[0], d.pos[1], d.pos[2]);
 
-  let rotY = 0.58;
+    const boxGeo = new T.BoxGeometry(2.9, 0.88, 0.46);
+    const tex    = makeLabel(d.label, d.sub, d.color);
+    const c      = d.hex;
 
-  // ── Visibility-aware animation loop ──────────────────────
+    const mats = [
+      new T.MeshStandardMaterial({ color: 0x0a0618, emissive: c, emissiveIntensity: 0.07, metalness: 0.3, roughness: 0.7 }),
+      new T.MeshStandardMaterial({ color: 0x0a0618, emissive: c, emissiveIntensity: 0.07, metalness: 0.3, roughness: 0.7 }),
+      new T.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.45, metalness: 0.5, roughness: 0.4 }),
+      new T.MeshStandardMaterial({ color: 0x060412, emissive: c, emissiveIntensity: 0.03 }),
+      new T.MeshBasicMaterial({ map: tex, transparent: true }),
+      new T.MeshStandardMaterial({ color: 0x0a0618, emissive: c, emissiveIntensity: 0.05 }),
+    ];
+    const box = new T.Mesh(boxGeo, mats);
+    group.add(box);
+
+    const edges = new T.LineSegments(
+      new T.EdgesGeometry(boxGeo),
+      new T.LineBasicMaterial({ color: d.hex, transparent: true, opacity: 0.7 })
+    );
+    group.add(edges);
+
+    const glow = makeGlow(d.color, 4.8);
+    glow.position.z = -0.35;
+    group.add(glow);
+
+    const light = new T.PointLight(d.hex, 0.85, 5.5);
+    group.add(light);
+    scene.add(group);
+
+    nodeMap[d.id] = {
+      group,
+      pos: new T.Vector3(d.pos[0], d.pos[1], d.pos[2]),
+      color: d.color, hex: d.hex, light
+    };
+  });
+
+  // Build curved edges
+  EDGES.forEach(([aid, bid]) => {
+    const a = nodeMap[aid], b = nodeMap[bid];
+    if (!a || !b) return;
+    const mid = new T.Vector3(
+      (a.pos.x + b.pos.x) * 0.5,
+      (a.pos.y + b.pos.y) * 0.5,
+      (a.pos.z + b.pos.z) * 0.5 + 0.5
+    );
+    const curve = new T.CatmullRomCurve3([a.pos.clone(), mid, b.pos.clone()]);
+    const pts   = curve.getPoints(64);
+    const line  = new T.Line(
+      new T.BufferGeometry().setFromPoints(pts),
+      new T.LineBasicMaterial({ color: 0x5b21b6, transparent: true, opacity: 0.38 })
+    );
+    scene.add(line);
+    edgeCurves.push({ curve, fromId: aid, toId: bid });
+  });
+
+  // Background particle cloud
+  const ptPos = new Float32Array(260 * 3);
+  for (let i = 0; i < 260; i++) {
+    ptPos[i*3]   = (Math.random()-0.5) * 22;
+    ptPos[i*3+1] = (Math.random()-0.5) * 16;
+    ptPos[i*3+2] = (Math.random()-0.5) * 9 - 2;
+  }
+  const ptGeo = new T.BufferGeometry();
+  ptGeo.setAttribute('position', new T.BufferAttribute(ptPos, 3));
+  scene.add(new T.Points(ptGeo, new T.PointsMaterial({
+    color: 0xA78BFA, size: 0.055, transparent: true, opacity: 0.5,
+    blending: T.AdditiveBlending
+  })));
+
+  // Animated data packets
+  const packets = [];
+  let lastSpawn = 0;
+
+  function spawnPacket() {
+    const idx    = Math.floor(Math.random() * EDGES.length);
+    const [aid, bid] = EDGES[idx];
+    const edge   = edgeCurves.find(e => e.fromId === aid && e.toId === bid);
+    if (!edge) return;
+    const hexCol = nodeMap[aid].hex;
+    const pkt = new T.Mesh(
+      new T.SphereGeometry(0.13, 8, 8),
+      new T.MeshBasicMaterial({ color: hexCol })
+    );
+    const glow = makeGlow(nodeMap[aid].color, 1.1);
+    pkt.add(glow);
+    scene.add(pkt);
+    packets.push({ mesh: pkt, curve: edge.curve, t: 0, spd: 0.008 + Math.random() * 0.006 });
+  }
+
+  // ── Animation loop ────────────────────────────────────────
   let raf = null, visible = false;
   function tick(now) {
     if (!visible) { raf = null; return; }
-    draw(now);
+
+    const t = now * 0.001;
+    camAngle += 0.0004;
+
+    // Very subtle camera drift — no full orbit to keep architecture readable
+    camera.position.x = 4.5 * Math.cos(camAngle) - 0.5 * Math.sin(camAngle);
+    camera.position.z = 11.5 * Math.cos(camAngle * 0.3) + 1.5;
+    camera.lookAt(0, 0, 0);
+
+    // Spawn packets periodically
+    if (now - lastSpawn > 700) { spawnPacket(); lastSpawn = now; }
+
+    // Advance packets
+    for (let i = packets.length - 1; i >= 0; i--) {
+      const p = packets[i];
+      p.t += p.spd;
+      if (p.t >= 1) {
+        scene.remove(p.mesh);
+        packets.splice(i, 1);
+        continue;
+      }
+      const pos = p.curve.getPoint(p.t);
+      p.mesh.position.copy(pos);
+    }
+
+    // Pulse node glows
+    ARCH.forEach((d, i) => {
+      const n = nodeMap[d.id];
+      const pulse = 0.7 + 0.3 * Math.sin(t * 0.9 + i * 1.1);
+      n.light.intensity = 0.85 * pulse;
+    });
+
+    renderer.render(scene, camera);
     raf = requestAnimationFrame(tick);
   }
+
   const heroIO = new IntersectionObserver((entries) => {
     entries.forEach(e => {
       if (e.isIntersecting) {
@@ -244,146 +461,6 @@ function initHero() {
     });
   }, { threshold: 0.01 });
   heroIO.observe(canvas);
-
-  // Click anywhere on canvas to relaunch ball from new position
-  canvas.addEventListener('click', resetBall);
-  canvas.style.cursor = 'crosshair';
-
-  // ── Main draw ─────────────────────────────────────────────
-  function draw(now) {
-    const t = now * 0.001;
-    rotY += 0.00022;           // slow auto-rotation
-
-    ctx.clearRect(0, 0, W, H);
-
-    // Background — deep purple radial gradient
-    const bgG = ctx.createRadialGradient(W * 0.5, H * 0.38, 0, W * 0.5, H * 0.55, W * 0.72);
-    bgG.addColorStop(0,    '#10062a');
-    bgG.addColorStop(0.42, '#08031a');
-    bgG.addColorStop(1,    '#05030e');
-    ctx.fillStyle = bgG;
-    ctx.fillRect(0, 0, W, H);
-
-    const cx    = W * 0.5;
-    const cy    = H * 0.44;
-    const scale = Math.min(W, H) * 0.255;
-
-    // Build grid point screen coords
-    const pts = new Array(N * N);
-    for (let j = 0; j < N; j++) {
-      for (let i = 0; i < N; i++) {
-        const gx = -RANGE + i * STEP;
-        const gy = -RANGE + j * STEP;
-        const gz = surfaceZ(gx, gy, t);
-        const p  = window.iso(gx, gy, gz, cx, cy, scale, rotY);
-        pts[j * N + i] = { sx: p.x, sy: p.y, d: p.depth };
-      }
-    }
-
-    // Color a line segment by depth: far = dim navy, near = bright cyan
-    function lineRGBA(depth) {
-      const u = Math.max(0, Math.min(1, (depth + 2.0) / 3.8));
-      const r = Math.round(16  + u * 87);
-      const g = Math.round(5   + u * 227);
-      const b = Math.round(50  + u * 199);
-      const a = (0.10 + u * 0.52).toFixed(3);
-      return `rgba(${r},${g},${b},${a})`;
-    }
-
-    ctx.lineWidth = 0.68;
-
-    // Horizontal strands (j fixed, i varies)
-    for (let j = 0; j < N; j++) {
-      for (let i = 0; i < N - 1; i++) {
-        const a = pts[j * N + i], b = pts[j * N + i + 1];
-        ctx.beginPath();
-        ctx.moveTo(a.sx, a.sy);
-        ctx.lineTo(b.sx, b.sy);
-        ctx.strokeStyle = lineRGBA((a.d + b.d) * 0.5);
-        ctx.stroke();
-      }
-    }
-    // Vertical strands (i fixed, j varies)
-    for (let i = 0; i < N; i++) {
-      for (let j = 0; j < N - 1; j++) {
-        const a = pts[j * N + i], b = pts[(j + 1) * N + i];
-        ctx.beginPath();
-        ctx.moveTo(a.sx, a.sy);
-        ctx.lineTo(b.sx, b.sy);
-        ctx.strokeStyle = lineRGBA((a.d + b.d) * 0.5);
-        ctx.stroke();
-      }
-    }
-
-    // Floating particles
-    for (let k = 0; k < PARTS.length; k++) {
-      const p = PARTS[k];
-      const a = p.alpha * (0.4 + 0.6 * Math.sin(t * p.freq + p.phase));
-      const pp = window.iso(p.gx, p.gy, p.gz, cx, cy, scale, rotY);
-      ctx.beginPath();
-      ctx.arc(pp.x, pp.y, 1.3, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(167,139,250,${a.toFixed(3)})`;
-      ctx.fill();
-    }
-
-    // ── Ball physics: gradient descent on surface ────────────
-    const H2  = 0.013;
-    const dgx = (surfaceZ(ball.x + H2, ball.y, t) - surfaceZ(ball.x - H2, ball.y, t)) / (2 * H2);
-    const dgy = (surfaceZ(ball.x, ball.y + H2, t) - surfaceZ(ball.x, ball.y - H2, t)) / (2 * H2);
-    ball.vx = ball.vx * 0.82 - 0.12 * dgx;
-    ball.vy = ball.vy * 0.82 - 0.12 * dgy;
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-
-    // Boundary and convergence resets
-    const CLAMP = RANGE * 0.93;
-    if (Math.abs(ball.x) > CLAMP || Math.abs(ball.y) > CLAMP) { resetBall(); }
-    const spd2 = ball.vx * ball.vx + ball.vy * ball.vy;
-    if (spd2 < 6e-6 && ball.x * ball.x + ball.y * ball.y < 0.05) { resetBall(); }
-
-    const bz = surfaceZ(ball.x, ball.y, t);
-    const bp = window.iso(ball.x, ball.y, bz, cx, cy, scale, rotY);
-
-    trail.push({ x: bp.x, y: bp.y });
-    if (trail.length > TRAIL_MAX) trail.shift();
-
-    // Trail — fading cyan ribbon
-    if (trail.length > 2) {
-      for (let i = 1; i < trail.length; i++) {
-        const frac = i / trail.length;
-        ctx.beginPath();
-        ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
-        ctx.lineTo(trail[i].x, trail[i].y);
-        ctx.strokeStyle = `rgba(103,232,249,${(frac * 0.72).toFixed(3)})`;
-        ctx.lineWidth   = frac * 2.6;
-        ctx.stroke();
-      }
-    }
-
-    // Ball outer glow halo
-    const BR    = 7.5;
-    const glowR = ctx.createRadialGradient(bp.x, bp.y, 0, bp.x, bp.y, BR * 4);
-    glowR.addColorStop(0,    'rgba(103,232,249,0.88)');
-    glowR.addColorStop(0.28, 'rgba(103,232,249,0.42)');
-    glowR.addColorStop(0.65, 'rgba(103,232,249,0.10)');
-    glowR.addColorStop(1,    'rgba(103,232,249,0)');
-    ctx.beginPath();
-    ctx.arc(bp.x, bp.y, BR * 4, 0, Math.PI * 2);
-    ctx.fillStyle = glowR;
-    ctx.fill();
-
-    // Ball body — inner radial gradient for 3D sheen
-    ctx.beginPath();
-    ctx.arc(bp.x, bp.y, BR, 0, Math.PI * 2);
-    const ballG = ctx.createRadialGradient(
-      bp.x - BR * 0.32, bp.y - BR * 0.32, BR * 0.08,
-      bp.x, bp.y, BR
-    );
-    ballG.addColorStop(0, 'rgba(230,255,255,1)');
-    ballG.addColorStop(1, 'rgba(103,232,249,1)');
-    ctx.fillStyle = ballG;
-    ctx.fill();
-  }
 }
 
 // ── Navbar scroll shadow ─────────────────────────────────────
@@ -404,6 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavbar();
   initQuiz();
   initQA();
+  initDiagramPackets();
 
   document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
 

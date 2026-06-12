@@ -250,6 +250,55 @@
   <h2 class="section-title">Two-Phase Locking Visualizer</h2>
   <p class="section-desc">Step through a 3-transaction, 5-resource locking scenario. Watch Shared and Exclusive locks fill the table. A deadlock cycle forms and triggers rollback of one victim.</p>
 
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 230" role="img" aria-label="Two-phase locking: growing phase, shrinking phase, and deadlock wait-for graph">
+      <!-- Phase timeline -->
+      <text x="30"  y="28" class="svg-soft">Lock Phases</text>
+      <line x1="30"  y1="38" x2="670" y2="38" class="svg-line"/>
+      <!-- Growing phase -->
+      <rect x="30"  y="48" width="270" height="38" rx="6" class="svg-box-p"/>
+      <text x="165" y="66"  text-anchor="middle" class="svg-label">GROWING PHASE</text>
+      <text x="165" y="81"  text-anchor="middle" class="svg-soft">acquire locks, never release</text>
+      <!-- Lock point -->
+      <line x1="300" y1="38" x2="300" y2="105" class="svg-line" style="stroke:#EF4444"/>
+      <text x="300" y="118" text-anchor="middle" class="svg-soft" style="fill:#EF4444">Lock Point</text>
+      <!-- Shrinking phase -->
+      <rect x="310" y="48" width="260" height="38" rx="6" class="svg-box-c"/>
+      <text x="440" y="66"  text-anchor="middle" class="svg-label">SHRINKING PHASE</text>
+      <text x="440" y="81"  text-anchor="middle" class="svg-soft">release locks, never acquire</text>
+      <!-- Lock table -->
+      <text x="30"  y="148" class="svg-soft">Lock Table</text>
+      <rect x="30"  y="155" width="80"  height="22" rx="4" class="svg-box"/>
+      <text x="70"  y="170" text-anchor="middle" class="svg-mono" style="font-size:10px">Resource</text>
+      <rect x="115" y="155" width="60"  height="22" rx="4" class="svg-box-p"/>
+      <text x="145" y="170" text-anchor="middle" class="svg-mono" style="font-size:10px">T1</text>
+      <rect x="180" y="155" width="60"  height="22" rx="4" class="svg-box-c"/>
+      <text x="210" y="170" text-anchor="middle" class="svg-mono" style="font-size:10px">T2</text>
+      <rect x="245" y="155" width="60"  height="22" rx="4" class="svg-box-a"/>
+      <text x="275" y="170" text-anchor="middle" class="svg-mono" style="font-size:10px">T3</text>
+      <!-- Rows -->
+      <rect x="30"  y="180" width="80"  height="22" rx="4" class="svg-box"/><text x="70"  y="195" text-anchor="middle" class="svg-mono" style="font-size:10px">Row A</text>
+      <rect x="115" y="180" width="60"  height="22" rx="4" style="fill:rgba(124,58,237,0.25);stroke:#7C3AED;stroke-width:1.5;rx:4"/><text x="145" y="195" text-anchor="middle" class="svg-mono" style="font-size:10px">X</text>
+      <rect x="180" y="180" width="60"  height="22" rx="4" style="fill:rgba(14,165,233,0.12);stroke:#0EA5E9;stroke-width:1.5;rx:4"/><text x="210" y="195" text-anchor="middle" class="svg-mono" style="font-size:10px">WAIT</text>
+      <rect x="30"  y="205" width="80"  height="22" rx="4" class="svg-box"/><text x="70"  y="220" text-anchor="middle" class="svg-mono" style="font-size:10px">Row B</text>
+      <rect x="180" y="205" width="60"  height="22" rx="4" style="fill:rgba(14,165,233,0.25);stroke:#0EA5E9;stroke-width:1.5;rx:4"/><text x="210" y="220" text-anchor="middle" class="svg-mono" style="font-size:10px">X</text>
+      <rect x="115" y="205" width="60"  height="22" rx="4" style="fill:rgba(124,58,237,0.12);stroke:#7C3AED;stroke-width:1.5;rx:4"/><text x="145" y="220" text-anchor="middle" class="svg-mono" style="font-size:10px">WAIT</text>
+      <!-- Wait-for graph -->
+      <text x="420" y="148" class="svg-soft">Wait-For Graph</text>
+      <circle cx="460" cy="188" r="22" style="fill:rgba(124,58,237,0.18);stroke:#7C3AED;stroke-width:2"/>
+      <text x="460" cy="192" text-anchor="middle" dominant-baseline="middle" class="svg-label" y="192">T1</text>
+      <circle cx="580" cy="188" r="22" style="fill:rgba(14,165,233,0.18);stroke:#0EA5E9;stroke-width:2"/>
+      <text x="580" text-anchor="middle" dominant-baseline="middle" class="svg-label" y="192">T2</text>
+      <line x1="482" y1="178" x2="558" y2="178" class="svg-line" style="stroke:#EF4444"/>
+      <line x1="558" y1="198" x2="482" y2="198" class="svg-line" style="stroke:#EF4444"/>
+      <text x="520" y="168" text-anchor="middle" class="svg-soft" style="fill:#EF4444;font-size:10px">DEADLOCK</text>
+      <!-- Packets -->
+      <circle class="pkt" cx="115" cy="190" r="5" fill="#7C3AED"/>
+      <circle class="pkt" cx="180" cy="216" r="5" fill="#0EA5E9"/>
+    </svg>
+    <p class="diagram-caption">2PL prevents non-serializable schedules by ensuring all locks are acquired before any are released. The deadlock is a cycle in the wait-for graph — T1 holds Row A and waits for Row B; T2 holds Row B and waits for Row A. The DBMS picks a victim and rolls back.</p>
+  </div>
+
   <div class="demo-section" id="demo-concurrency">
     <div class="demo-header">
       <h3>2PL Lock Table</h3>

@@ -182,6 +182,40 @@
   <h2 class="section-title">Document vs Column Store Comparison</h2>
   <p class="section-desc">Compare how a query for a specific column is handled differently in a document store (reads entire document) vs a column store (reads only target column).</p>
 
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 240" role="img" aria-label="CAP theorem triangle and NoSQL store placement">
+      <!-- Triangle -->
+      <polygon points="350,20 100,210 600,210" style="fill:rgba(124,58,237,0.06);stroke:#7C3AED;stroke-width:2;stroke-linejoin:round"/>
+      <!-- Corner labels -->
+      <text x="350" y="14" text-anchor="middle" class="svg-label" style="fill:#10B981">Consistency</text>
+      <text x="350" y="28" text-anchor="middle" class="svg-soft">all nodes see same data</text>
+      <text x="72"  y="226" text-anchor="middle" class="svg-label" style="fill:#0EA5E9">Availability</text>
+      <text x="72"  y="240" text-anchor="middle" class="svg-soft">always responds</text>
+      <text x="628" y="226" text-anchor="middle" class="svg-label" style="fill:#EF4444">Partition Tolerance</text>
+      <text x="628" y="240" text-anchor="middle" class="svg-soft">survives net split</text>
+      <!-- Edge midpoint labels (pick 2) -->
+      <text x="210" y="116" text-anchor="middle" class="svg-soft" style="fill:#10B981">CA systems</text>
+      <text x="490" y="116" text-anchor="middle" class="svg-soft" style="fill:#EF4444">CP systems</text>
+      <text x="350" y="220" text-anchor="middle" class="svg-soft" style="fill:#0EA5E9">AP systems</text>
+      <!-- Product placement dots -->
+      <circle cx="225" cy="132" r="7" fill="#0EA5E9" opacity="0.9"/>
+      <text x="215" y="150" text-anchor="middle" class="svg-mono" style="font-size:10px;fill:#0EA5E9">Cassandra</text>
+      <circle cx="475" cy="132" r="7" fill="#EF4444" opacity="0.9"/>
+      <text x="485" y="150" text-anchor="middle" class="svg-mono" style="font-size:10px;fill:#EF4444">HBase</text>
+      <circle cx="350" cy="80"  r="7" fill="#10B981" opacity="0.9"/>
+      <text x="390" y="86"  text-anchor="middle" class="svg-mono" style="font-size:10px;fill:#10B981">PostgreSQL</text>
+      <circle cx="350" cy="210" r="7" fill="#A78BFA" opacity="0.9"/>
+      <text x="350" y="207" text-anchor="middle" class="svg-mono" style="font-size:10px;fill:#A78BFA">DynamoDB</text>
+      <!-- Note: can only pick 2 -->
+      <text x="350" y="53" text-anchor="middle" class="svg-soft" style="fill:#F59E0B;font-size:11px">Pick any two during a network partition</text>
+      <!-- Packets along edges -->
+      <circle class="pkt" cx="210" cy="116" r="5" fill="#0EA5E9"/>
+      <circle class="pkt" cx="490" cy="116" r="5" fill="#EF4444"/>
+      <circle class="pkt" cx="350" cy="210" r="5" fill="#A78BFA"/>
+    </svg>
+    <p class="diagram-caption">CAP theorem says a distributed system can guarantee only two of three properties during a network partition. In practice, partition tolerance is non-negotiable at scale, so the real choice is CP (strong consistency, possible unavailability) vs. AP (always available, eventual consistency).</p>
+  </div>
+
   <div class="demo-section" id="demo-nosql">
     <div class="demo-header">
       <h3>Document vs Column Store Access Patterns</h3>

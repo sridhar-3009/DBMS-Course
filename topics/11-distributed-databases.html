@@ -300,6 +300,51 @@
   <h2 class="section-title">Raft Consensus Simulator</h2>
   <p class="section-desc">Send a write to the leader and watch log replication to followers. Kill the leader to trigger an election — watch the election timer and the new leader emerge from the remaining nodes.</p>
 
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 230" role="img" aria-label="Raft consensus: leader sends AppendEntries to two followers, both ACK">
+      <!-- Leader -->
+      <rect x="260" y="10" width="180" height="62" rx="8" class="svg-box-p"/>
+      <text x="350" y="32" text-anchor="middle" class="svg-label" style="fill:#7C3AED">LEADER</text>
+      <text x="350" y="50" text-anchor="middle" class="svg-soft">term=4  log=[1..17]</text>
+      <text x="350" y="66" text-anchor="middle" class="svg-mono" style="font-size:10px">heartbeat every 150ms</text>
+      <!-- Follower 1 -->
+      <rect x="40"  y="140" width="180" height="62" rx="8" class="svg-box-c"/>
+      <text x="130" y="163" text-anchor="middle" class="svg-label" style="fill:#0EA5E9">FOLLOWER 1</text>
+      <text x="130" y="180" text-anchor="middle" class="svg-soft">term=4  log=[1..16]</text>
+      <text x="130" y="197" text-anchor="middle" class="svg-mono" style="font-size:10px">election timer: 320ms</text>
+      <!-- Follower 2 -->
+      <rect x="480" y="140" width="180" height="62" rx="8" class="svg-box-c"/>
+      <text x="570" y="163" text-anchor="middle" class="svg-label" style="fill:#0EA5E9">FOLLOWER 2</text>
+      <text x="570" y="180" text-anchor="middle" class="svg-soft">term=4  log=[1..17]</text>
+      <text x="570" y="197" text-anchor="middle" class="svg-mono" style="font-size:10px">election timer: 480ms</text>
+      <!-- AppendEntries arrows leader -> followers -->
+      <line x1="290" y1="72" x2="175" y2="140" class="svg-line" style="stroke:#7C3AED"/>
+      <line x1="410" y1="72" x2="525" y2="140" class="svg-line" style="stroke:#7C3AED"/>
+      <text x="192" y="113" text-anchor="middle" class="svg-soft" style="fill:#7C3AED;font-size:10px">AppendEntries</text>
+      <text x="508" y="113" text-anchor="middle" class="svg-soft" style="fill:#7C3AED;font-size:10px">AppendEntries</text>
+      <!-- ACK arrows -->
+      <line x1="175" y1="155" x2="290" y2="87" class="svg-line svg-dash" style="stroke:#10B981"/>
+      <line x1="525" y1="155" x2="410" y2="87" class="svg-line svg-dash" style="stroke:#10B981"/>
+      <text x="192" y="136" text-anchor="middle" class="svg-soft" style="fill:#10B981;font-size:10px">ACK</text>
+      <text x="508" y="136" text-anchor="middle" class="svg-soft" style="fill:#10B981;font-size:10px">ACK</text>
+      <!-- Commit note -->
+      <rect x="240" y="94" width="220" height="36" rx="6" class="svg-box-g"/>
+      <text x="350" y="109" text-anchor="middle" class="svg-soft">Quorum = 2/3 ACKs</text>
+      <text x="350" y="124" text-anchor="middle" class="svg-soft">Commit when majority reply</text>
+      <!-- Client request -->
+      <rect x="310" y="195" width="80" height="30" rx="6" class="svg-box-a"/>
+      <text x="350" y="208" text-anchor="middle" class="svg-soft">Client</text>
+      <text x="350" y="222" text-anchor="middle" class="svg-mono" style="font-size:10px">SET x=5</text>
+      <line x1="350" y1="195" x2="350" y2="130" class="svg-line svg-dash" style="stroke:#F59E0B"/>
+      <!-- Packets -->
+      <circle class="pkt" cx="290" cy="72"  r="5" fill="#7C3AED"/>
+      <circle class="pkt" cx="175" cy="140" r="5" fill="#7C3AED"/>
+      <circle class="pkt" cx="175" cy="155" r="5" fill="#10B981"/>
+      <circle class="pkt" cx="350" cy="195" r="5" fill="#F59E0B"/>
+    </svg>
+    <p class="diagram-caption">Raft elects one leader per term. The leader appends entries to its log then sends AppendEntries RPCs to followers. A write is committed once a majority (quorum) ACKs. If the leader crashes, followers whose election timer fires first request votes — whoever gets majority becomes the new leader.</p>
+  </div>
+
   <div class="demo-section" id="demo-distributed">
     <div class="demo-header">
       <h3>Raft Consensus (3-node cluster)</h3>

@@ -168,6 +168,61 @@
   <h2 class="section-title">Schema Designer</h2>
   <p class="section-desc">Drag tables to arrange them. Click "Add Table" to create a new one. Click "Export SQL" to generate CREATE TABLE statements — useful for practicing design interviews.</p>
 
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 220" role="img" aria-label="System design interview checklist: clarify, estimate, design, deep-dive, trade-offs">
+      <!-- Step boxes in a flow -->
+      <rect x="10"  y="60" width="110" height="100" rx="8" class="svg-box-c"/>
+      <text x="65"  y="85"  text-anchor="middle" class="svg-label">1. Clarify</text>
+      <text x="65"  y="103" text-anchor="middle" class="svg-soft">QPS, DAU,</text>
+      <text x="65"  y="118" text-anchor="middle" class="svg-soft">read/write</text>
+      <text x="65"  y="133" text-anchor="middle" class="svg-soft">ratio, SLA</text>
+      <text x="65"  y="150" text-anchor="middle" class="svg-soft">latency</text>
+      <rect x="140" y="60" width="110" height="100" rx="8" class="svg-box-p"/>
+      <text x="195" y="85"  text-anchor="middle" class="svg-label">2. Estimate</text>
+      <text x="195" y="103" text-anchor="middle" class="svg-soft">storage,</text>
+      <text x="195" y="118" text-anchor="middle" class="svg-soft">bandwidth,</text>
+      <text x="195" y="133" text-anchor="middle" class="svg-soft">CPU back</text>
+      <text x="195" y="148" text-anchor="middle" class="svg-soft">of envelope</text>
+      <rect x="270" y="60" width="110" height="100" rx="8" class="svg-box-a"/>
+      <text x="325" y="85"  text-anchor="middle" class="svg-label">3. Design</text>
+      <text x="325" y="103" text-anchor="middle" class="svg-soft">entities,</text>
+      <text x="325" y="118" text-anchor="middle" class="svg-soft">APIs, DB</text>
+      <text x="325" y="133" text-anchor="middle" class="svg-soft">schema,</text>
+      <text x="325" y="148" text-anchor="middle" class="svg-soft">data model</text>
+      <rect x="400" y="60" width="130" height="100" rx="8" class="svg-box-g"/>
+      <text x="465" y="85"  text-anchor="middle" class="svg-label">4. Deep-dive</text>
+      <text x="465" y="103" text-anchor="middle" class="svg-soft">indexes,</text>
+      <text x="465" y="118" text-anchor="middle" class="svg-soft">caching, CDN,</text>
+      <text x="465" y="133" text-anchor="middle" class="svg-soft">sharding,</text>
+      <text x="465" y="148" text-anchor="middle" class="svg-soft">replication</text>
+      <rect x="550" y="60" width="140" height="100" rx="8" class="svg-box-r"/>
+      <text x="620" y="85"  text-anchor="middle" class="svg-label">5. Trade-offs</text>
+      <text x="620" y="103" text-anchor="middle" class="svg-soft">SQL vs NoSQL,</text>
+      <text x="620" y="118" text-anchor="middle" class="svg-soft">CP vs AP,</text>
+      <text x="620" y="133" text-anchor="middle" class="svg-soft">push vs pull,</text>
+      <text x="620" y="148" text-anchor="middle" class="svg-soft">sync vs async</text>
+      <!-- Connector lines -->
+      <line x1="120" y1="110" x2="140" y2="110" class="svg-line"/>
+      <line x1="250" y1="110" x2="270" y2="110" class="svg-line"/>
+      <line x1="380" y1="110" x2="400" y2="110" class="svg-line"/>
+      <line x1="530" y1="110" x2="550" y2="110" class="svg-line"/>
+      <!-- Time label -->
+      <text x="350" y="26"  text-anchor="middle" class="svg-soft" style="fill:#F59E0B">45-minute interview cadence</text>
+      <line x1="10"  y1="38" x2="690" y2="38" class="svg-line" style="stroke:#F59E0B"/>
+      <text x="65"  y="52"  text-anchor="middle" class="svg-mono" style="font-size:9px;fill:#F59E0B">5 min</text>
+      <text x="195" y="52"  text-anchor="middle" class="svg-mono" style="font-size:9px;fill:#F59E0B">5 min</text>
+      <text x="325" y="52"  text-anchor="middle" class="svg-mono" style="font-size:9px;fill:#F59E0B">10 min</text>
+      <text x="465" y="52"  text-anchor="middle" class="svg-mono" style="font-size:9px;fill:#F59E0B">15 min</text>
+      <text x="620" y="52"  text-anchor="middle" class="svg-mono" style="font-size:9px;fill:#F59E0B">10 min</text>
+      <!-- Packets -->
+      <circle class="pkt" cx="120" cy="110" r="5" fill="#0EA5E9"/>
+      <circle class="pkt" cx="250" cy="110" r="5" fill="#7C3AED"/>
+      <circle class="pkt" cx="380" cy="110" r="5" fill="#F59E0B"/>
+      <circle class="pkt" cx="530" cy="110" r="5" fill="#10B981"/>
+    </svg>
+    <p class="diagram-caption">Use this flow for every system design question. The interviewer wants to see structured thinking and named trade-offs — not a perfect design. Spend 50% of your time on the deep-dive and trade-offs sections; that is where differentiation lives.</p>
+  </div>
+
   <div class="demo-section" id="demo-interview">
     <div class="demo-header">
       <h3>Schema Builder</h3>

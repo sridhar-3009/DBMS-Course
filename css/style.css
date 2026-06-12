@@ -299,12 +299,40 @@ code {
   background: color-mix(in srgb, var(--surface) 90%, transparent);
   border: 1px solid var(--border); border-radius: var(--radius);
   padding: 1.4rem; margin: 1.4rem 0; overflow-x: auto;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.diagram-box:hover {
+  border-color: rgba(124,58,237,0.5);
+  box-shadow: 0 8px 32px rgba(124,58,237,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .diagram-box svg { display: block; max-width: 100%; margin: 0 auto; }
 .diagram-caption {
   font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.04em;
   color: var(--text-muted); text-align: center; margin-top: 0.85rem;
 }
+
+/* ── SVG diagram helpers ────────────────────────────────────── */
+.svg-label { font-family: var(--font-sans); font-size: 13px; font-weight: 600; fill: var(--text); }
+.svg-soft  { font-family: var(--font-sans); font-size: 11px; fill: var(--text-soft); }
+.svg-mono  { font-family: var(--font-mono); font-size: 11px; fill: var(--text-soft); }
+.svg-box   { fill: var(--surface-2); stroke: var(--border); stroke-width: 1.5; }
+.svg-box-p { fill: rgba(124,58,237,0.12); stroke: #7C3AED; stroke-width: 1.8; }
+.svg-box-c { fill: rgba(14,165,233,0.10); stroke: #0EA5E9; stroke-width: 1.8; }
+.svg-box-g { fill: rgba(16,185,129,0.10); stroke: #10B981; stroke-width: 1.8; }
+.svg-box-a { fill: rgba(245,158,11,0.10); stroke: #F59E0B; stroke-width: 1.8; }
+.svg-box-r { fill: rgba(239,68,68,0.10);  stroke: #EF4444; stroke-width: 1.8; }
+.svg-line  { stroke: var(--text-muted); stroke-width: 1.8; fill: none; }
+.svg-line-p { stroke: #7C3AED; stroke-width: 1.8; fill: none; opacity: 0.55; }
+.svg-dash  { stroke-dasharray: 7 5; animation: svgDashMove 1.4s linear infinite; }
+/* Animated packet circles — driven by initDiagramPackets() */
+.pkt { opacity: 0; }
+/* Sequential entrance animations */
+.seq { opacity: 0; animation: svgSeqIn 0.6s ease forwards; }
+.seq-1 { animation-delay: 0.15s; } .seq-2 { animation-delay: 0.5s; }
+.seq-3 { animation-delay: 0.85s; } .seq-4 { animation-delay: 1.2s; }
+.seq-5 { animation-delay: 1.55s; }
+@keyframes svgDashMove { to { stroke-dashoffset: -24; } }
+@keyframes svgSeqIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* ── Code block ─────────────────────────────────────────────── */
 .code-block {

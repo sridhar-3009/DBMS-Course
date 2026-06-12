@@ -227,6 +227,44 @@ Step 6: Sort node materializes result, applies ORDER BY</span>
     <p>The buffer pool is a fixed-size pool of RAM pages managed by the DBMS. When a disk page is needed, the DBMS checks the buffer pool first (buffer hit — fast) or fetches from disk (buffer miss — slow, 0.1ms vs 100ns). InnoDB buffer pool is typically set to 70-80% of server RAM. PostgreSQL's <code>shared_buffers</code> is set to 25% of RAM, relying on the OS page cache for the rest. A buffer pool hit rate above 95% is normal for OLTP workloads — below 90% indicates insufficient RAM or a missing index forcing full scans.</p>
   </div>
 
+  <div class="section-label">Architecture Diagram</div>
+  <h2 class="section-title">Three-Schema Architecture</h2>
+  <p class="section-desc">Every DBMS provides three layers of abstraction. Queries flow from the external view through the logical schema down to physical storage — and results travel back up.</p>
+
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 220" role="img" aria-label="Three-schema architecture: external views, conceptual schema, internal schema, physical storage">
+      <!-- External layer -->
+      <rect x="20"  y="20" width="140" height="48" rx="8" class="svg-box-c"/>
+      <text x="90"  y="40" text-anchor="middle" class="svg-label">External View 1</text>
+      <text x="90"  y="58" text-anchor="middle" class="svg-soft">HR: salaries</text>
+      <rect x="280" y="20" width="140" height="48" rx="8" class="svg-box-c"/>
+      <text x="350" y="40" text-anchor="middle" class="svg-label">External View 2</text>
+      <text x="350" y="58" text-anchor="middle" class="svg-soft">Dev: user IDs</text>
+      <rect x="540" y="20" width="140" height="48" rx="8" class="svg-box-c"/>
+      <text x="610" y="40" text-anchor="middle" class="svg-label">External View 3</text>
+      <text x="610" y="58" text-anchor="middle" class="svg-soft">Analyst: reports</text>
+      <!-- Conceptual layer -->
+      <rect x="200" y="100" width="300" height="48" rx="8" class="svg-box-p"/>
+      <text x="350" y="120" text-anchor="middle" class="svg-label">Conceptual Schema</text>
+      <text x="350" y="137" text-anchor="middle" class="svg-soft">Tables, relations, constraints</text>
+      <!-- Internal layer -->
+      <rect x="230" y="170" width="240" height="40" rx="8" class="svg-box-g"/>
+      <text x="350" y="186" text-anchor="middle" class="svg-label">Internal Schema</text>
+      <text x="350" y="202" text-anchor="middle" class="svg-soft">B+trees, pages, files</text>
+      <!-- Lines: external -> conceptual -->
+      <line x1="90"  y1="68" x2="280" y2="100" class="svg-line"/>
+      <line x1="350" y1="68" x2="350" y2="100" class="svg-line"/>
+      <line x1="610" y1="68" x2="420" y2="100" class="svg-line"/>
+      <!-- Lines: conceptual -> internal -->
+      <line x1="350" y1="148" x2="350" y2="170" class="svg-line"/>
+      <!-- Animated packets flowing down -->
+      <circle class="pkt" cx="90" cy="68" r="5" fill="#0EA5E9"/>
+      <circle class="pkt" cx="610" cy="40" r="5" fill="#0EA5E9"/>
+      <circle class="pkt" cx="350" cy="148" r="5" fill="#7C3AED"/>
+    </svg>
+    <p class="diagram-caption">Logical independence: change the conceptual schema without rewriting external queries. Physical independence: reorganize storage without touching the conceptual layer.</p>
+  </div>
+
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">ER Diagram Explorer</h2>
   <p class="section-desc">Click any entity to highlight its relationships and attributes. The ER diagram models a university registration system.</p>

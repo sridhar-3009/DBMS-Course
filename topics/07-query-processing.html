@@ -197,6 +197,46 @@
   <h2 class="section-title">Query Execution Plan Visualizer</h2>
   <p class="section-desc">Pick a query preset. Watch data packets flow upward through the plan tree — from table scans through joins to the final result.</p>
 
+  <div class="diagram-box">
+    <svg viewBox="0 0 700 230" role="img" aria-label="Query execution plan: scan, filter, hash join, aggregate, result">
+      <!-- Result at top -->
+      <rect x="260" y="8"  width="180" height="42" rx="8" class="svg-box-g"/>
+      <text x="350" y="26"  text-anchor="middle" class="svg-label">Result Set</text>
+      <text x="350" y="43"  text-anchor="middle" class="svg-soft">returned to client</text>
+      <!-- Aggregate -->
+      <rect x="260" y="74" width="180" height="42" rx="8" class="svg-box-a"/>
+      <text x="350" y="92"  text-anchor="middle" class="svg-label">Aggregate</text>
+      <text x="350" y="109" text-anchor="middle" class="svg-soft">SUM / COUNT / GROUP BY</text>
+      <!-- Hash Join -->
+      <rect x="260" y="140" width="180" height="42" rx="8" class="svg-box-p"/>
+      <text x="350" y="158" text-anchor="middle" class="svg-label">Hash Join</text>
+      <text x="350" y="175" text-anchor="middle" class="svg-soft">build hash table on smaller rel</text>
+      <!-- Seq Scan left -->
+      <rect x="60"  y="185" width="165" height="42" rx="8" class="svg-box-c"/>
+      <text x="142" y="203" text-anchor="middle" class="svg-label">Seq Scan</text>
+      <text x="142" y="220" text-anchor="middle" class="svg-mono">employees (full)</text>
+      <!-- Index Scan right -->
+      <rect x="475" y="185" width="165" height="42" rx="8" class="svg-box-c"/>
+      <text x="557" y="203" text-anchor="middle" class="svg-label">Index Scan</text>
+      <text x="557" y="220" text-anchor="middle" class="svg-mono">departments (dept_id)</text>
+      <!-- Vertical connectors -->
+      <line x1="350" y1="50"  x2="350" y2="74"  class="svg-line"/>
+      <line x1="350" y1="116" x2="350" y2="140" class="svg-line"/>
+      <line x1="350" y1="182" x2="142" y2="185" class="svg-line"/>
+      <line x1="350" y1="182" x2="557" y2="185" class="svg-line"/>
+      <!-- Cost labels -->
+      <text x="590" y="92"  class="svg-mono" style="font-size:10px;fill:#F59E0B">cost: 1200</text>
+      <text x="590" y="160" class="svg-mono" style="font-size:10px;fill:#F59E0B">cost: 980</text>
+      <text x="590" y="208" class="svg-mono" style="font-size:10px;fill:#F59E0B">cost: 42</text>
+      <!-- Packets flowing upward -->
+      <circle class="pkt" cx="142" cy="185" r="5" fill="#0EA5E9"/>
+      <circle class="pkt" cx="350" cy="182" r="5" fill="#7C3AED"/>
+      <circle class="pkt" cx="350" cy="116" r="5" fill="#F59E0B"/>
+      <circle class="pkt" cx="350" cy="50"  r="5" fill="#10B981"/>
+    </svg>
+    <p class="diagram-caption">The planner builds a tree where rows flow upward — leaves produce tuples, parent operators consume and transform them. The optimizer chooses operators (hash vs. merge join, seq vs. index scan) by minimizing estimated cost using statistics from pg_statistic.</p>
+  </div>
+
   <div class="demo-section" id="demo-query">
     <div class="demo-header">
       <h3>Execution Plan Tree</h3>
