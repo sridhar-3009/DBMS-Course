@@ -7,13 +7,18 @@
 function mkCanvas(container, w, h) {
   const wrap = container.querySelector('.demo-canvas-wrap');
   const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  c.style.cssText = `width:100%;max-width:${w}px;height:auto;`;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width  = Math.round(w * dpr);
+  c.height = Math.round(h * dpr);
+  c.style.cssText = `width:100%;max-width:${w}px;height:auto;display:block;`;
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   wrap.appendChild(c);
   return c;
 }
 function lerp(a,b,t){ return a+(b-a)*t; }
 function eio(t){ return t<.5?2*t*t:-1+(4-2*t)*t; }
+function easeOutCubic(t){ return 1 - Math.pow(1-t, 3); }
 function isDark(){ return document.documentElement.getAttribute('data-theme') !== 'light'; }
 function TC(){ // theme colors
   return isDark()
@@ -396,7 +401,7 @@ function initSQLDemo(container) {
       ctx.fillStyle=TC().muted; ctx.font='10px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(`Rows examined: ${DATA.length}`, W-85, dataY+14);
       ctx.fillStyle='#10B981'; ctx.font='bold 11px Inter';
-      ctx.fillText(`✓ ${matched} rows returned`, W-85, dataY+28);
+      ctx.fillText(`${matched} rows returned`, W-85, dataY+28);
     }
   }
 
@@ -405,15 +410,19 @@ function initSQLDemo(container) {
     cancelAnimationFrame(raf);
     rowState = DATA.map(()=>({ alpha:1, match:false }));
     scanning=true; scanIdx=0;
-    function step(){
+    let lastScan = 0;
+    function step(now){
       if(scanIdx < DATA.length){
-        rowState[scanIdx].match = evalRow(DATA[scanIdx], query);
-        rowState[scanIdx].alpha = rowState[scanIdx].match ? 1 : 0.3;
-        scanIdx++; draw();
-        raf = setTimeout(()=>requestAnimationFrame(step), 120);
+        if(now - lastScan >= 110){
+          rowState[scanIdx].match = evalRow(DATA[scanIdx], query);
+          rowState[scanIdx].alpha = rowState[scanIdx].match ? 1 : 0.3;
+          scanIdx++;
+          lastScan = now;
+        }
+        draw(); raf = requestAnimationFrame(step);
       } else { scanning=false; draw(); }
     }
-    requestAnimationFrame(step);
+    raf = requestAnimationFrame(step);
   }
 
   const input = container.querySelector('.demo-input');
@@ -646,7 +655,7 @@ function initTransactionDemo(container) {
     ctx.fillText('Balance:', 90, 178);
     const t1w=T1_OPS.find(o=>o.type==='write'), t2w=T2_OPS.find(o=>o.type==='write');
     let bal='$100';
-    if(progress>=(t2w?.t||1)) bal='$150 ⚠';
+    if(progress>=(t2w?.t||1)) bal='$150 (!)';
     else if(progress>=(t1w?.t||1)) bal='$70';
     ctx.fillStyle='#10B981'; ctx.font='bold 16px Inter';
     ctx.fillText(bal, 160, 176);
@@ -666,7 +675,7 @@ function initTransactionDemo(container) {
       ctx.fillStyle=`${a.color}22`; ctx.fill();
       ctx.strokeStyle=a.color; ctx.lineWidth=1.5; ctx.stroke();
       ctx.fillStyle=a.color; ctx.font='bold 10px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('⚠ '+a.label, W/2, 226+i*34);
+      ctx.fillText('! '+a.label, W/2, 226+i*34);
     });
 
     // Progress bar
@@ -959,23 +968,20 @@ function initQueryDemo(container) {
     const q=plan.label; ctx.fillText(q.length>80?q.slice(0,78)+'…':q, W/2, H-20);
   }
 
-  let raf;
-  function animate(t) {
-    raf=requestAnimationFrame(animate);
-    if(t-lastSpawn>600){
-      const plan=PLANS[currentPlan];
+  window.makeVisibleLoop(canvas, (now) => {
+    if(now - lastSpawn > 600){
+      const plan = PLANS[currentPlan];
       plan.edges.forEach(([a,b])=>{
         packets.push({ from:a, to:b, t:0, spd:0.012+Math.random()*.008 });
       });
-      lastSpawn=t;
+      lastSpawn = now;
     }
     for(let i=packets.length-1;i>=0;i--){
-      packets[i].t+=packets[i].spd;
-      if(packets[i].t>=1) packets.splice(i,1);
+      packets[i].t += packets[i].spd;
+      if(packets[i].t >= 1) packets.splice(i,1);
     }
-    draw(t);
-  }
-  animate(0);
+    draw(now);
+  });
 
   container.querySelectorAll('[data-plan]').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -1070,7 +1076,7 @@ function initConcurrencyDemo(container) {
       ctx.fillStyle='rgba(239,68,68,.15)'; ctx.fill();
       ctx.strokeStyle='#EF4444'; ctx.lineWidth=1.5; ctx.stroke();
       ctx.fillStyle='#EF4444'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('🔴 DEADLOCK: '+deadlock.join(' → '), W/2, dy+18);
+      ctx.fillText('DEADLOCK: '+deadlock.join(' -> '), W/2, dy+18);
       ctx.fillStyle=TC().muted; ctx.font='10px Inter';
       ctx.fillText('T1 rolled back — locks released', W/2, dy+28);
     }
@@ -1200,7 +1206,7 @@ function initNoSQLDemo(container) {
     ctx.fillStyle=isDark()?'#1E293B':'#fff'; ctx.fill();
     ctx.strokeStyle='#0EA5E9'; ctx.lineWidth=1.5; ctx.stroke();
     ctx.fillStyle='#0EA5E9'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.textBaseline='top';
-    ctx.fillText('📄 Document Store',x+w/2,y+8);
+    ctx.fillText('Document Store',x+w/2,y+8);
 
     const lines=JSON.stringify(DOC_DATA,null,2).split('\n');
     lines.forEach((line,i)=>{
@@ -1231,7 +1237,7 @@ function initNoSQLDemo(container) {
     ctx.fillStyle=isDark()?'#1E293B':'#fff'; ctx.fill();
     ctx.strokeStyle='#8B5CF6'; ctx.lineWidth=1.5; ctx.stroke();
     ctx.fillStyle='#8B5CF6'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.textBaseline='top';
-    ctx.fillText('📊 Column Store',x+w/2,y+8);
+    ctx.fillText('Column Store',x+w/2,y+8);
 
     const CW2=(w-20)/Object.keys(COL_DATA).length;
     Object.entries(COL_DATA).forEach(([col,vals],ci)=>{
@@ -1355,7 +1361,7 @@ function initDistributedDemo(container) {
     });
     if(!n.alive){
       ctx.fillStyle='#EF4444'; ctx.font='bold 20px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('✕',n.x,n.y);
+      ctx.fillText('X',n.x,n.y);
     }
   }
 
@@ -1402,19 +1408,16 @@ function initDistributedDemo(container) {
     ctx.globalAlpha=1;
   }
 
-  let raf;
-  function animLoop(t) {
-    raf=requestAnimationFrame(animLoop);
+  window.makeVisibleLoop(canvas, () => {
     for(let i=packets.length-1;i>=0;i--){
-      packets[i].t+=packets[i].spd;
-      if(packets[i].t>=1){
+      packets[i].t += packets[i].spd;
+      if(packets[i].t >= 1){
         if(packets[i].onArrive) packets[i].onArrive();
         packets.splice(i,1);
       }
     }
     draw();
-  }
-  animLoop(0);
+  });
 
   function sendPacket(from,to,label,color,onArrive){
     packets.push({ from,to,label,color,t:0,spd:0.03+(Math.random()*.01),onArrive });
