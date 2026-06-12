@@ -32,7 +32,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 01</div>
     <h1>Introduction to <span class="accent">DBMS</span></h1>
-    <p class="subtitle">Why file systems fail at scale — and how a Database Management System solves data independence, integrity, concurrency, and recovery.</p>
+    <p class="subtitle">Imagine storing all your app's data in a spreadsheet. It works fine until two people try to edit it at the same time, the file gets corrupted, or you need to answer complex questions about the data. A Database Management System (DBMS) exists to solve exactly those problems.</p>
     <div class="company-badges">
       <span class="badge">MySQL</span><span class="badge">PostgreSQL</span><span class="badge">SQLite</span>
       <span class="badge">Oracle DB</span><span class="badge">MariaDB</span><span class="badge">IBM Db2</span>
@@ -42,11 +42,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>DBMS</strong> adds data independence, integrity, concurrency control, and recovery on top of raw file storage.</li>
-      <li><strong>Three-schema architecture</strong> — External (views) / Conceptual (logical) / Internal (physical) — changes at one level don't ripple to others.</li>
-      <li><strong>ACID</strong> (Atomicity, Consistency, Isolation, Durability) — the four correctness guarantees for transactions.</li>
-      <li><strong>Query pipeline</strong> — Parse → Optimize → Execute → Buffer Manager → Disk I/O.</li>
-      <li><strong>Write-Ahead Logging (WAL)</strong> ensures durability: log the change before flushing dirty pages to disk.</li>
+      <li><strong>DBMS vs. flat files</strong> — a spreadsheet breaks when two people edit it at once; a DBMS handles that automatically, plus enforces data rules and recovers from crashes.</li>
+      <li><strong>Three-schema architecture</strong> — think of it like a building: visitors see the lobby (external views), architects see the floor plan (logical schema), and engineers see the pipes (physical storage). Change the pipes without redrawing the floor plan.</li>
+      <li><strong>ACID</strong> — four promises a database makes. Think of a bank transfer: the money leaves one account AND enters the other (Atomicity), rules are never broken (Consistency), two people don't interfere (Isolation), and once it's done it stays done even if power dies (Durability).</li>
+      <li><strong>Query pipeline</strong> — your SQL is like a recipe: first it's read and understood (Parse), then the best cooking method is chosen (Optimize), then the food is actually made (Execute).</li>
+      <li><strong>Write-Ahead Log (WAL)</strong> — before changing any data, the database writes a note in a journal. If the power goes out, it re-reads the journal and picks up where it left off.</li>
     </ul>
   </div>
 
@@ -55,22 +55,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Data Independence</h4>
-      <p>Physical independence: change storage structures (add an index, switch file format) without touching application logic. Logical independence: restructure the schema (split a table) without rewriting existing queries.</p>
+      <p>Imagine your app reads data from a filing cabinet. If you reorganize the cabinet (add dividers, switch folders), your app should not need to be rewritten. That is data independence. Physical independence means you can change how data is stored on disk without touching your queries. Logical independence means you can restructure your tables without breaking existing code.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>ACID Properties</h4>
-      <p>Atomicity — all or nothing. Consistency — constraints always satisfied. Isolation — concurrent transactions don't interfere. Durability — committed data survives crashes. Together they make transactions reliable in multi-user environments.</p>
+      <p>Think about transferring $100 between bank accounts. Atomicity: if the debit succeeds but the credit fails, the whole thing is cancelled — money never disappears into thin air. Consistency: the database only allows valid states, so your balance can never go negative if you set that rule. Isolation: two people booking the same last seat see each other's changes correctly. Durability: once the bank says "transfer complete," it stays complete even if the server crashes a second later.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Three-Schema Architecture</h4>
-      <p>External (views for each user group), Conceptual (global logical schema — tables, keys, constraints), Internal (physical storage — B+tree files, page layout, compression). Three levels of abstraction isolate users from hardware details.</p>
+      <p>Think of a hospital. Nurses see patient records (their external view). The hospital's records department sees all tables and relationships (the conceptual schema). The IT department worries about hard drives and backups (the internal schema). Each group sees only what they need. If the IT department upgrades the servers, the nurses' screens do not change. That separation is the three-schema architecture.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Concurrency Control</h4>
-      <p>Multiple users reading and writing simultaneously without corrupting data. The DBMS serializes conflicting operations transparently via locking (2PL) or multi-version concurrency control (MVCC).</p>
+      <p>Imagine two people editing the same Google Doc at the same time. Databases face a harder version of this problem: two people buying the last ticket, or two bank transfers hitting the same account. The DBMS coordinates these automatically. One approach is locking (like putting a "do not disturb" sign on a row — called Two-Phase Locking or 2PL). Another is keeping multiple versions of data so readers never wait on writers (called MVCC). You do not need to implement this yourself — the database handles it.</p>
     </div>
   </div>
 
@@ -81,42 +81,42 @@
       <div class="step-num">1</div>
       <div>
         <h4>Query Parser</h4>
-        <p>The SQL string is tokenized, syntax-checked, and parsed into a parse tree. Semantic checks validate table names, column types, and user permissions. Any error here surfaces as a syntax or permission error before any data is touched.</p>
+        <p>When you type a SQL query, the first thing the database does is read it like a teacher reading an essay — checking for spelling mistakes (syntax errors), confirming the table names exist, and verifying you have permission to access that data. If anything is wrong here, you get an error message and nothing else happens yet.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Query Rewriter</h4>
-        <p>The parse tree is transformed by rule-based rewrites: views are expanded inline, subqueries are simplified, row-level security policies are applied. This step is transparent to the user — the SQL runs as written but may be internally restructured.</p>
+        <p>Before the database decides how to run your query, it cleans it up. If you queried a view (a saved named query), it replaces the view name with the actual query behind it. If there are security rules (for example, "this user can only see their own rows"), those get baked in here. You write one thing; the database quietly rewrites it into a complete, safe version before proceeding.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Query Optimizer</h4>
-        <p>The optimizer generates multiple execution plans, estimates costs using statistics (row counts, data distribution, index cardinality), and selects the cheapest plan. The difference between plans can be 1000x in execution time — this is the most complex component in any DBMS.</p>
+        <p>This is the brain of the operation. The optimizer looks at your query and thinks about all the ways it could be answered. Should it scan every row? Use an index to jump straight to the right rows? Which table should it read first? It estimates how much work each approach would take, using statistics about how many rows are in each table and how the data is distributed, then picks the fastest plan. A good plan can be 1000x faster than a bad one for the same query.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Execution Engine</h4>
-        <p>The physical plan is executed using the Volcano/Iterator model: each operator calls GetNext() on its child operators, and rows flow upward through the tree. The engine calls the Storage Manager to fetch data pages from the Buffer Pool (RAM cache).</p>
+        <p>The execution works like an assembly line. The plan is a chain of steps — filter rows, join tables, sort results. Each step asks the step below it "give me the next row," processes it, then passes it up. This pull-based design is called the Iterator model (sometimes called the Volcano model). The engine fetches the actual data from a RAM cache called the buffer pool, which is much faster than reading from disk every time.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">5</div>
       <div>
         <h4>Transaction Manager</h4>
-        <p>Wraps each query in a transaction context. Acquires locks (shared for reads, exclusive for writes), writes WAL (Write-Ahead Log) records before modifying dirty pages, and releases locks on commit or rollback. Enforces the chosen isolation level.</p>
+        <p>Every query runs inside a transaction — a unit of work that either fully completes or fully undoes. The Transaction Manager keeps track of what is in-progress. Before any data is changed, it writes a note to a journal (the Write-Ahead Log, or WAL) saying what is about to happen. It also manages locks so that two queries do not corrupt the same row at the same time. When you run COMMIT, the transaction is sealed; ROLLBACK throws it all away.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">6</div>
       <div>
         <h4>Recovery Manager</h4>
-        <p>On crash, performs ARIES recovery: Analysis pass (identify dirty pages at crash), Redo pass (replay WAL from last checkpoint), Undo pass (roll back uncommitted transactions using before-images). Restores a consistent, durable state without data loss.</p>
+        <p>When the database crashes (power outage, server restart), the Recovery Manager takes over. It works like reading a journal after a disaster: first it figures out where things stood at the time of the crash, then it replays all the completed work from the journal (called the WAL) to restore it, and finally it cancels any work that was still in progress. This process is called ARIES recovery. The key insight is that because every change was logged before it happened, nothing is ever truly lost.</p>
       </div>
     </div>
   </div>
@@ -196,28 +196,28 @@ Step 6: Sort node materializes result, applies ORDER BY</span>
       <div class="step-num">1</div>
       <div>
         <h4>Log Before Disk</h4>
-        <p>Before modifying any data page on disk, the DBMS writes a log record to the WAL describing the change: transaction ID, page ID, before-image, and after-image. This is the "Write-Ahead" guarantee — the log is always ahead of the data.</p>
+        <p>Before the database changes any data, it first writes a description of that change to a journal on disk (called the Write-Ahead Log, or WAL). Think of it like a chef writing down a recipe step before actually cooking it. If the kitchen catches fire mid-recipe, you still know exactly what was being done and can restart from the right point. The log always stays one step ahead of the actual data — that is the "write-ahead" guarantee.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>In-Memory Modification</h4>
-        <p>The actual data page is modified in the buffer pool (RAM). The dirty page is not immediately flushed to disk — this is what makes writes fast. A crash at this point is recoverable because the WAL record exists on durable storage.</p>
+        <p>After logging, the database makes the change in memory (in the buffer pool — its RAM workspace). The updated data does not go to disk right away. This is intentional: writing to RAM is thousands of times faster than writing to disk. If the server crashes at this point, no data is lost — the WAL journal already has a record of every change, so recovery can reconstruct the correct state.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Commit Flushes Log</h4>
-        <p>On COMMIT, the WAL records for the transaction are flushed to disk (fsync). This is the durability guarantee. The dirty data page can lag — it gets written by the background checkpoint process. <code>synchronous_commit = off</code> in PostgreSQL skips this flush for speed (at the cost of durability).</p>
+        <p>When you run COMMIT, the database forces its journal entries to physical storage before telling you "success." This is the moment durability is guaranteed. The actual data pages in RAM can still be updated lazily in the background — but the log is already safe. In PostgreSQL, setting <code>synchronous_commit = off</code> skips this final safety step, making writes faster but risking the loss of a few recent commits if the server crashes.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Checkpoint and Recovery</h4>
-        <p>Periodically, the checkpoint process flushes all dirty pages to disk and writes a checkpoint record to the WAL. On crash recovery, the ARIES protocol replays WAL from the most recent checkpoint (redo phase), then undoes uncommitted transactions (undo phase). Recovery time is bounded by checkpoint frequency.</p>
+        <p>Periodically the database takes a "checkpoint" — it flushes all in-memory changes to disk and marks a safe starting point in the journal. Think of it like saving your progress in a game. After a crash, recovery does not replay the entire journal from the beginning — just from the last checkpoint. The ARIES recovery process then replays completed work (redo), and cancels anything that was still in-progress when the crash happened (undo). More frequent checkpoints mean faster recovery.</p>
       </div>
     </div>
   </div>

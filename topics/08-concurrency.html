@@ -27,7 +27,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 08</div>
     <h1>Concurrency <span class="accent">Control</span></h1>
-    <p class="subtitle">Two-phase locking, MVCC, deadlock detection, gap locks, intent locks, and optimistic vs pessimistic strategies — how databases handle thousands of simultaneous transactions correctly and efficiently.</p>
+    <p class="subtitle">When thousands of users are reading and writing the same data at the same moment, how does the database keep everything correct? If two people try to buy the last item in stock at the same time, only one should succeed. This topic explains the strategies databases use to manage that safely — from simple locks to multi-version snapshots.</p>
     <div class="company-badges">
       <span class="badge">PostgreSQL MVCC</span><span class="badge">InnoDB 2PL</span>
       <span class="badge">Oracle</span><span class="badge">CockroachDB SSI</span><span class="badge">MySQL</span>
@@ -37,11 +37,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>2PL (Two-Phase Locking)</strong> — growing phase acquires locks, shrinking phase releases them. No new locks after the first release. Guarantees serializability.</li>
-      <li><strong>Shared lock (S)</strong> — allows concurrent reads. <strong>Exclusive lock (X)</strong> — blocks all other access. Intent locks signal row-level locking to the table.</li>
-      <li><strong>Deadlock</strong> — cycle in the wait-for graph. Detected by cycle detection; resolved by aborting the victim transaction.</li>
-      <li><strong>MVCC</strong> — multiple row versions let readers see a consistent snapshot without blocking writers. Writers never block readers.</li>
-      <li><strong>Gap locks</strong> (InnoDB) — lock the gap between index values to prevent phantom inserts at REPEATABLE READ.</li>
+      <li><strong>2PL (Two-Phase Locking)</strong> — a strategy where each transaction first collects all the locks it needs (growing phase), then releases them all at the end (shrinking phase). This strict discipline prevents transactions from interfering with each other in ways that would give incorrect results.</li>
+      <li><strong>Shared lock (S)</strong> — multiple readers can hold shared locks on the same row simultaneously. <strong>Exclusive lock (X)</strong> — only one transaction can write; all others must wait. Intent locks are a shorthand signal at the table level so the database does not have to scan every row lock to check compatibility.</li>
+      <li><strong>Deadlock</strong> — when two transactions are each waiting for the other's lock and neither can proceed. The database detects this circular wait, picks one transaction as the victim, rolls it back, and lets the other proceed. Your application needs to retry on this error.</li>
+      <li><strong>MVCC</strong> — instead of using locks for reads, the database keeps multiple versions of each row. Readers always see a consistent snapshot from when their transaction started. Readers never block writers. Writers never block readers.</li>
+      <li><strong>Gap locks</strong> (MySQL InnoDB) — a lock placed on the space between index values, not on any actual row. This prevents other transactions from inserting new rows into a range you are reading, which stops phantom rows from appearing.</li>
     </ul>
   </div>
 
@@ -51,22 +51,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Two-Phase Locking (2PL)</h4>
-      <p>Growing phase: acquire locks, never release. Shrinking phase: release locks, never acquire. Lock point = first release. Guarantees serializability. Strict 2PL holds all locks until commit to prevent cascading aborts.</p>
+      <p>Two-Phase Locking is a set of rules that prevents concurrent transactions from producing incorrect results. Phase one (growing): the transaction acquires all the locks it needs — on every row it reads or writes. It never releases any locks during this phase. Phase two (shrinking): when the transaction is done with all its work, it releases all locks at once (on commit or rollback). This two-phase discipline guarantees that no two concurrent transactions can produce results that would be impossible in a sequential world. The version used in real databases holds all locks until commit to avoid a problem where one transaction's rollback forces another to also rollback.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>MVCC</h4>
-      <p>Each write creates a new row version. Readers see a consistent snapshot based on transaction start time. Readers never block writers; writers never block readers. PostgreSQL's primary strategy — no shared locks on reads.</p>
+      <p>Multi-Version Concurrency Control (MVCC) is the reason you can read data quickly on a busy database without waiting for writers to finish. Instead of locking a row when a writer updates it, the database keeps the old version for readers and creates a new version for the writer. A reader sees a consistent snapshot of the database from the moment their transaction started — even if other transactions are updating rows at the same time. Readers never block writers. Writers never block readers. PostgreSQL and Oracle use MVCC for all reads — no read locks needed.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Deadlock</h4>
-      <p>T1 waits for T2's lock; T2 waits for T1's lock. Cycle in the wait-for graph. Neither can proceed. DBMS detects via cycle detection, picks a victim, rolls it back. Application must catch error 40P01 and retry.</p>
+      <p>Imagine Transaction A is holding the lock on Row 1 and waiting for Row 2. At the same time, Transaction B is holding the lock on Row 2 and waiting for Row 1. Both are stuck waiting for each other — forever. This is a deadlock. The database detects it by checking for these circular waits. When found, it picks one transaction as the "victim," rolls it back (freeing its locks), and lets the other proceed. This is a normal occurrence in a busy database — your application code needs to catch the deadlock error and retry the transaction.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Optimistic Concurrency</h4>
-      <p>No locking at read time. Execute freely, validate at commit. If conflict detected (another transaction modified read data), abort and retry. Efficient under low contention; wasteful under high contention.</p>
+      <p>Optimistic concurrency is based on the assumption that conflicts are rare. Instead of locking rows when you read them, you just read freely. When you are ready to save your changes, you check whether anyone else changed the same data while you were working. If no conflict — great, commit. If someone else changed it — abort and try again. This works very well when conflicts are unlikely (most reads), but is inefficient if many transactions are competing for the same rows (they all keep retrying). A common implementation is a "version number" column — you read the version, and when writing, check that the version is still the same.</p>
     </div>
   </div>
 
@@ -100,28 +100,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Growing phase</h4>
-        <p>The transaction acquires all locks it needs — shared locks for reads, exclusive locks for writes. It can escalate a shared lock to exclusive (by waiting for all other shared lock holders to release). No locks are released during this phase. The transaction accumulates its "lock set."</p>
+        <p>In the first phase, the transaction accumulates all the locks it needs. Reading a row requires a shared lock (others can also read, but no one can write). Writing requires an exclusive lock (no one else can read or write). If a transaction needs to upgrade from read to write on the same row, it waits until all other readers release their locks first. During this entire phase, no locks are ever released — only acquired.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Lock point</h4>
-        <p>The lock point is the instant the first lock is released. After this moment, no new locks can be acquired. The serialization order of transactions is determined by their lock points — the transaction whose lock point comes first effectively "went first" in the serial execution.</p>
+        <p>The moment a transaction releases its first lock is called the lock point. After this moment, the transaction cannot acquire any new locks. The order in which transactions reach their lock points effectively defines the order in which they "happened." Two transactions that never overlap in their lock sets can run truly in parallel. Two that do overlap must take turns, and their lock points determine which one went first in the equivalent sequential execution.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Strict 2PL (used by real databases)</h4>
-        <p>In the theoretical 2PL above, a transaction could release locks before committing — allowing another transaction to read its uncommitted data (dirty read), and if it later aborts, causing a cascading abort. Strict 2PL solves this: hold ALL locks (both shared and exclusive) until the transaction commits or aborts. Only then are all locks released atomically. This prevents dirty reads and cascading aborts entirely.</p>
+        <p>In theory, a transaction could release some locks early while still running. But this creates a danger: another transaction could read the partially-released data, and if the first transaction later rolls back, that second transaction made decisions based on data that never officially existed. This chain of failures is called a cascading abort. To prevent it, real databases use Strict 2PL: all locks are held until the very end (commit or rollback), then released all at once. This is slightly more conservative but prevents cascading failures entirely.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Lock granularity</h4>
-        <p>Locking can be applied at different levels: database, table, page, row, or even column. Fine granularity (row-level) allows maximum concurrency — only rows being accessed are locked. Coarse granularity (table-level) is simpler but blocks all concurrent access. Intent locks (IS, IX) at the table level are a compromise: signal that row-level locks exist without enumerating them, enabling fast table-level lock compatibility checks.</p>
+        <p>Locks can be applied at different scales: the whole table, a page of rows, or a single row. Locking an entire table is simple but heavy — it blocks everyone while one transaction is running. Locking individual rows is more precise and allows multiple transactions to work on different rows at the same time. To avoid scanning every row-level lock when someone wants to lock the whole table, databases use intent locks — a quick signal at the table level that says "there are row locks in here," allowing fast compatibility checks without looking at every row.</p>
       </div>
     </div>
   </div>
@@ -136,28 +136,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Record lock</h4>
-        <p>Locks a single index record. <code>SELECT * FROM t WHERE id = 10 FOR UPDATE</code> acquires a record lock on the index entry with id=10. Prevents another transaction from modifying or deleting this specific row. Does not prevent insertions of new rows with other IDs.</p>
+        <p>A record lock targets exactly one row. When you run <code>SELECT * FROM t WHERE id = 10 FOR UPDATE</code>, the database places a lock on the row with id=10. No other transaction can update or delete that specific row while your transaction holds the lock. It does not block inserts of unrelated rows — only this one record is protected.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Gap lock</h4>
-        <p>Locks the gap between two index values. <code>SELECT * FROM t WHERE id BETWEEN 10 AND 20 FOR UPDATE</code> locks the gap (10, 20) — no new row with 11 &#8804; id &#8804; 19 can be inserted by another transaction. Gap locks are for preventing phantoms, not preventing modification of existing rows. Two transactions can both hold gap locks on the same range without conflict.</p>
+        <p>A gap lock protects the empty space between existing index values. Imagine you are reading all orders with id between 10 and 20. A gap lock on that range prevents any other transaction from inserting a new order that would fall inside it. This stops phantom rows — rows that would appear if you re-ran the same query. Importantly, two transactions can both hold gap locks on the same range at the same time without conflicting, because they are both just preventing inserts, not modifying anything.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Next-key lock</h4>
-        <p>The combination of a record lock plus the gap lock immediately before it. InnoDB's default locking mode for index scans. For the range query above, InnoDB acquires next-key locks on every index entry in the range, plus the gap after the last entry. This prevents both modification of existing rows AND insertion of new rows into the scanned range.</p>
+        <p>A next-key lock is a record lock and a gap lock combined into one. It protects a specific existing row AND the empty space just before it. When InnoDB scans a range of rows, it places next-key locks on each row it touches, plus the gap after the last one. The result: no other transaction can modify any of those rows, and no transaction can insert a new row that would appear in that range. It is InnoDB's default strategy for range scans.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Deadlocks with gap locks</h4>
-        <p>Gap locks can cause unexpected deadlocks. Two INSERTs on the same table with adjacent keys can deadlock: T1 holds a gap lock preventing T2's insert; T2 holds a gap lock preventing T1's insert. Both wait. Resolution: InnoDB detects the cycle and aborts the younger transaction. Application must retry on ER_LOCK_DEADLOCK (error 1213).</p>
+        <p>Gap locks can create surprising deadlocks. Imagine two transactions each trying to insert a row next to the other's gap lock. Transaction A holds a gap lock that blocks B's insert, and transaction B holds a gap lock that blocks A's insert. Neither can move forward — a deadlock. InnoDB detects this circular standoff automatically, picks the younger transaction as the victim, rolls it back, and lets the other proceed. Your application should catch error 1213 (ER_LOCK_DEADLOCK) and retry the transaction.</p>
       </div>
     </div>
   </div>

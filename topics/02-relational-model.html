@@ -28,7 +28,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 02</div>
     <h1>The <span class="accent">Relational</span> Model</h1>
-    <p class="subtitle">Codd's formal foundation: relations, tuples, keys, integrity constraints, and the relational algebra that powers every SQL query under the hood.</p>
+    <p class="subtitle">Every database you have ever used — Gmail, Instagram, your bank — stores data in tables. This topic explains the rules behind those tables: how rows and columns are defined, how tables link to each other, and the mathematical operations that make SQL work.</p>
     <div class="company-badges">
       <span class="badge">PostgreSQL</span><span class="badge">MySQL</span><span class="badge">Oracle</span>
       <span class="badge">SQL Server</span><span class="badge">SQLite</span>
@@ -40,22 +40,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Relation (Table)</h4>
-      <p>A relation is a set of tuples (rows), all sharing the same schema (ordered list of attribute names and domains). Order of tuples is undefined — it is a set, not a list. Duplicate rows are not allowed in the strict relational model.</p>
+      <p>Think of a relation as a spreadsheet tab. Each row is one record — in database language, a row is called a tuple. Each column is one piece of data about that record — a column is called an attribute. All rows in the same table share the same columns. There is no "first row" or "last row" — order is not guaranteed, just like a deck of cards you have shuffled.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Keys Hierarchy</h4>
-      <p>Superkey: any set of attributes that uniquely identifies a tuple. Minimal superkey = Candidate Key. Chosen candidate key = Primary Key. Foreign Keys enforce referential integrity between relations.</p>
+      <p>Every row needs a way to be uniquely identified — like a student ID number. Any column (or combination of columns) that can identify a row is called a superkey. If you strip that down to the minimum needed (no extra columns), it becomes a candidate key. The one you officially designate as the row's identifier is the primary key. A foreign key is a column that points to the primary key of a different table — it is how tables link to each other.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Referential Integrity</h4>
-      <p>A FK value must either be NULL or match a PK in the referenced table. ON DELETE CASCADE / SET NULL / RESTRICT control what happens when the parent row is deleted — the choice encodes the business rule.</p>
+      <p>If every employee must belong to a department, the database enforces that you cannot delete a department that still has employees. This enforcement is called referential integrity. When the parent row is deleted, you decide: should child rows be deleted too (CASCADE)? Should their link be cleared (SET NULL)? Or should the deletion be blocked until the children are gone first (RESTRICT)? Each option encodes a real business decision.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Relational Algebra</h4>
-      <p>Six fundamental operations: sigma (select rows), pi (project columns), join (combine relations), union, difference, Cartesian product. All SQL compiles down to these. Extended operators: aggregation, outer join, rename.</p>
+      <p>Before SQL existed, mathematicians described database operations using symbols. Pick only certain rows: sigma. Pick only certain columns: pi. Combine two tables: join. Combine two result sets: union. Everything you write in SQL compiles down to these six basic operations. You do not need to memorize the symbols — but understanding them explains why SQL works the way it does.</p>
     </div>
   </div>
 
@@ -107,28 +107,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Domain Constraint</h4>
-        <p>Every attribute value must belong to its declared domain. Examples: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">age INT CHECK (age &gt;= 0)</code>, <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">status CHECK (status IN ('active','inactive'))</code>. Domains constrain what values are legal, independent of other rows.</p>
+        <p>Every column has a declared type and set of legal values — that is its domain. For example, an age column should not allow -5 or the word "banana." Domain constraints let you declare rules like "age must be a non-negative integer" or "status can only be 'active' or 'inactive'." The database rejects any insert or update that violates these rules before the data is ever saved.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Entity Integrity</h4>
-        <p>Primary key attributes must be non-null and unique. Every tuple must be uniquely identifiable. This is why surrogate keys (BIGSERIAL, UUID) are common — natural keys (email addresses, SSNs) are often nullable or change over time.</p>
+        <p>Every row must be uniquely identifiable — you cannot have a row with no identity. This means the primary key column can never be empty (NULL) and can never be duplicated. In practice, many tables use a generated ID number (like BIGSERIAL or UUID) as the primary key rather than something like an email address — email addresses can change, be shared, or be left blank, which would break this rule.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Referential Integrity</h4>
-        <p>FK values must reference an existing PK or be NULL. ON DELETE / UPDATE actions control cascading: CASCADE propagates the change, RESTRICT prevents it if children exist, SET NULL nullifies the FK, SET DEFAULT applies a default value.</p>
+        <p>When one table has a column pointing to another table's primary key (a foreign key), the database checks that the reference is valid. You cannot have an order row pointing to a customer that does not exist. When you delete the parent (the customer), you choose what happens to the children (the orders): delete them too (CASCADE), blank out the link (SET NULL), or refuse the deletion until you manually remove the children first (RESTRICT).</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>User-Defined Constraints</h4>
-        <p>Business rules beyond keys: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">CHECK (end_date &gt; start_date)</code>, multi-column <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">UNIQUE (user_id, product_id)</code>. Triggers can enforce complex cross-table invariants that CHECK cannot express in a single row.</p>
+        <p>Sometimes you need business rules that go beyond basic types and keys. For example, "end date must be after start date," or "each user can only have one review per product." These are user-defined constraints. You can declare them directly in the table definition, and the database will enforce them automatically — no application code needed. For more complex rules (like checking data across multiple tables at once), you can use triggers.</p>
       </div>
     </div>
   </div>
@@ -140,28 +140,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>sigma — Selection (WHERE)</h4>
-        <p>Filters rows based on a predicate. <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">sigma(salary&gt;80000)(employees)</code> — equivalent to <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">WHERE salary &gt; 80000</code>. Only filters rows, never reduces columns. Result has the same schema as the input relation.</p>
+        <p>This operation picks certain rows and throws away the rest. The symbol sigma (looks like a capital E rotated) represents "filter rows where this condition is true." In SQL, this is your WHERE clause. For example, "give me only employees earning over $80,000." The result has the same columns as before — you have only reduced the number of rows.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>pi — Projection (SELECT cols)</h4>
-        <p>Keeps only specified columns, removes duplicate tuples. Corresponds to <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">SELECT DISTINCT col1, col2</code>. SQL without DISTINCT allows duplicates (bag semantics) for performance; pure relational algebra always deduplicates.</p>
+        <p>This operation keeps only certain columns and hides the rest. The symbol pi represents "project columns." In SQL, this is the list of columns after SELECT — for example, "I only want the name and salary columns, not the full employee record." In strict math, projection also removes duplicate rows. In SQL, duplicates are kept by default for speed — add DISTINCT if you want to remove them.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Join — Combining Relations</h4>
-        <p>Combines two relations on a predicate. Natural join matches on all common attribute names — fragile in practice (adding a column silently changes semantics). Theta join with explicit predicate (SQL's JOIN ... ON) is always preferred in production.</p>
+        <p>A join takes two tables and stitches them together based on a matching column. Think of it like looking up a person's department name by matching the department ID on the employee row with the department ID on the department row. In SQL, you use JOIN ... ON to say exactly which columns should match. Always use an explicit ON condition in real code — letting the database guess (natural join) is risky and error-prone.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Set Operations (UNION, INTERSECT, EXCEPT)</h4>
-        <p>Combine result sets. Relations must be union-compatible (same arity, compatible domains). UNION ALL skips deduplication for performance. INTERSECT returns rows in both; EXCEPT returns rows in the first but not the second.</p>
+        <p>Sometimes you want to combine two query results rather than two tables. UNION stacks them together (like combining two lists). INTERSECT gives you only rows that appear in both lists. EXCEPT gives you rows from the first list that do not appear in the second. Both queries must return the same number of columns. UNION removes duplicates by default; use UNION ALL to keep them (which is faster when you know there are no duplicates).</p>
       </div>
     </div>
   </div>
@@ -200,11 +200,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>Relation</strong> = table. <strong>Tuple</strong> = row. <strong>Attribute</strong> = column. All values are atomic (1NF rule).</li>
-      <li><strong>Primary key</strong> uniquely identifies a tuple. <strong>Foreign key</strong> references a primary key in another relation.</li>
-      <li><strong>INNER JOIN</strong> returns only matching rows. <strong>LEFT JOIN</strong> keeps all rows from the left, NULLs on no match.</li>
-      <li><strong>Relational algebra</strong> — selection, projection, join, union, difference — is the theoretical basis for SQL.</li>
-      <li>Candidate keys and functional dependencies underpin normalization theory (next topic).</li>
+      <li><strong>Relation = table. Tuple = row. Attribute = column.</strong> Every value in every cell must be a single, indivisible piece of data — no lists inside a cell.</li>
+      <li><strong>Primary key</strong> — the unique ID for every row. <strong>Foreign key</strong> — a column that points to the primary key of another table. This is how you link tables together.</li>
+      <li><strong>INNER JOIN</strong> — only rows that match in both tables. <strong>LEFT JOIN</strong> — all rows from the left table, even when there is no match on the right (missing data shows as NULL).</li>
+      <li><strong>Relational algebra</strong> — think of it as the math version of SQL. Pick rows (sigma), pick columns (pi), link tables (join). SQL is just a friendlier way to write this.</li>
+      <li>The key rules you learn here (candidate keys, how data depends on other data) are the foundation of normalization — the next topic.</li>
     </ul>
   </div>
 

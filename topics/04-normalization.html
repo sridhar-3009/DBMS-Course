@@ -27,7 +27,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 04</div>
     <h1>Database <span class="accent">Normalization</span></h1>
-    <p class="subtitle">Eliminate redundancy and update anomalies by decomposing tables through functional dependency analysis — 1NF through BCNF, with concrete before/after examples and the tradeoffs of going further.</p>
+    <p class="subtitle">Imagine storing every order as a single row with the customer's name, city, and every product they ordered — all jammed together. What happens when the customer moves cities? You have to update every single row. Normalization is the process of designing your tables so that each piece of information lives in exactly one place, making updates safe and data consistent.</p>
     <div class="company-badges">
       <span class="badge">MySQL</span><span class="badge">PostgreSQL</span><span class="badge">Oracle</span>
       <span class="badge">SQL Server</span>
@@ -37,11 +37,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>1NF</strong> — atomic values, no repeating groups. Every cell holds a single, indivisible value.</li>
-      <li><strong>2NF</strong> — no partial dependency. Non-key columns depend on the <em>whole</em> primary key (only matters with composite keys).</li>
-      <li><strong>3NF</strong> — no transitive dependency. Non-key columns depend only on the key, not on other non-key columns.</li>
-      <li><strong>BCNF</strong> — stricter than 3NF. Every functional dependency X&#8594;Y must have X as a superkey. Eliminates all remaining anomalies.</li>
-      <li>Denormalization is a deliberate performance trade-off, not a mistake — but always start normalized and measure before denormalizing.</li>
+      <li><strong>1NF</strong> — every cell holds one value, not a list. No "apple, banana, cherry" in a single column. No columns like phone1, phone2, phone3.</li>
+      <li><strong>2NF</strong> — every non-key column depends on the entire primary key. If your primary key is two columns combined, a non-key column should not be determined by just one of them — that information belongs in its own table.</li>
+      <li><strong>3NF</strong> — non-key columns do not determine each other. If zip code determines city, city does not belong in the orders table — it belongs in a zip_codes table. Store each fact where it is directly known.</li>
+      <li><strong>BCNF</strong> — a stricter version of 3NF that handles a rare edge case when a table has multiple overlapping ways to uniquely identify rows. In practice, reaching 3NF covers almost all real designs.</li>
+      <li><strong>Denormalization</strong> is not wrong — it is a deliberate choice you make after measuring. Always start normalized, then add redundancy only where you can prove it solves a real performance problem.</li>
     </ul>
   </div>
 
@@ -55,21 +55,21 @@
       <div class="step-num">1</div>
       <div>
         <h4>Insert anomaly</h4>
-        <p>You cannot insert a fact without inserting an unrelated fact. In a table storing (order_id, customer_name, customer_city, product_name, price), you cannot add a new customer to the system until they place at least one order. The customer's existence is tied to a product fact.</p>
+        <p>Imagine a table that stores order rows with the customer's name and city baked in. If you want to add a new customer to the system before they have placed any order, you cannot — there is nowhere to put them. The customer information is tied to an order row, so a customer without an order simply cannot exist. This is an insert anomaly: you are forced to create unrelated data just to record the thing you actually want.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Update anomaly</h4>
-        <p>The same fact is stored in multiple rows. If a customer moves cities, you must update every row in the order table that references that customer. Miss even one row and the database becomes inconsistent — different rows disagree on the same real-world fact.</p>
+        <p>If a customer's city is stored in every order row, and that customer moves to a new city, you have to update hundreds of rows at once. If you update 99 out of 100 rows and miss one, your database now has contradicting information — the same customer living in two different cities at the same time. This is an update anomaly, and it is a silent data corruption problem. You may not even notice it until much later.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Delete anomaly</h4>
-        <p>Deleting a row destroys unrelated information. Delete the last order for a customer and you lose the customer's city entirely — a fact that has nothing to do with orders. The coupling between facts forces you to either keep orphaned rows or lose real-world data.</p>
+        <p>If the only record of a customer's address is embedded in order rows, then deleting the customer's last order also deletes their address — even though you only meant to delete the order. Information about the real world disappears as a side effect of an unrelated deletion. This is a delete anomaly: two pieces of information that should be independent are so tangled together that you cannot remove one without accidentally removing the other.</p>
       </div>
     </div>
   </div>
@@ -83,22 +83,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Full FD</h4>
-      <p>A &#8594; B where removing any attribute from A would break the dependency. E.g., {order_id, product_id} &#8594; quantity — both attributes are needed. Neither alone determines quantity.</p>
+      <p>A functional dependency (FD) just means "knowing this column tells you that column." For example, knowing a student ID tells you their name. A full FD is one where you need all the pieces of a composite key — you need both the order ID and the product ID together to know the quantity ordered. Neither alone is enough.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Partial FD</h4>
-      <p>A &#8594; B where A is a composite key and only part of A determines B. E.g., {order_id, product_id} &#8594; customer_name — order_id alone determines customer_name. Violates 2NF.</p>
+      <p>A partial FD is a problem: part of your composite primary key determines a non-key column by itself, without needing the other part. For example, if your primary key is (order_id, product_id) but customer_name is determined by order_id alone — not by the combination — then customer_name does not belong in this table. It depends on only half the key. This violates 2NF and causes the customer name to be repeated in every row for the same order.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Transitive FD</h4>
-      <p>A &#8594; B and B &#8594; C means A &#8594; C transitively. E.g., order_id &#8594; zip_code and zip_code &#8594; city — order_id &#8594; city is transitive. Violates 3NF.</p>
+      <p>A transitive FD is an indirect chain: A determines B, and B determines C, so A indirectly determines C through B. For example, an order has a zip code, and a zip code determines the city. So the order indirectly determines the city — but via the zip code, not directly. The city does not belong in the orders table; it belongs in a zip_codes table. Storing it in orders creates a 3NF violation.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Armstrong's Axioms</h4>
-      <p>Sound and complete inference rules for FDs: <em>Reflexivity</em> (B&#8838;A &#8658; A&#8594;B), <em>Augmentation</em> (A&#8594;B &#8658; AC&#8594;BC), <em>Transitivity</em> (A&#8594;B, B&#8594;C &#8658; A&#8594;C). Used to compute attribute closure F+.</p>
+      <p>Armstrong's Axioms are a set of logical rules for reasoning about which columns determine which other columns. You do not need to memorize the formal symbols, but the ideas are intuitive. Reflexivity: a column trivially determines itself. Augmentation: if A determines B, then A combined with C also determines B combined with C. Transitivity: if A determines B and B determines C, then A determines C. These rules are used to figure out the full set of things any given set of columns can determine — helpful when checking whether a design is fully normalized.</p>
     </div>
   </div>
 

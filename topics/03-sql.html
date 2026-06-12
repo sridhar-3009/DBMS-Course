@@ -27,7 +27,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 03</div>
     <h1>SQL <span class="accent">Fundamentals</span></h1>
-    <p class="subtitle">From basic SELECT to window functions, CTEs, subquery types, and EXPLAIN plans — the complete SQL toolkit for developers and data engineers.</p>
+    <p class="subtitle">SQL is the language you use to ask questions of a database. Think of it like talking to a very precise librarian who can fetch any combination of records, sort them, group them, or summarize them — as long as you phrase your question correctly. This topic covers how to write those questions well.</p>
     <div class="company-badges">
       <span class="badge">PostgreSQL</span><span class="badge">MySQL</span><span class="badge">SQLite</span>
       <span class="badge">BigQuery</span><span class="badge">Snowflake</span><span class="badge">DuckDB</span>
@@ -39,34 +39,34 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>SELECT Pipeline</h4>
-      <p>Logical execution order: FROM &rarr; JOIN &rarr; WHERE &rarr; GROUP BY &rarr; HAVING &rarr; SELECT &rarr; DISTINCT &rarr; ORDER BY &rarr; LIMIT. Not the textual order you write it — this is why you cannot reference SELECT aliases in WHERE.</p>
+      <p>A SQL query is not run in the order you write it. The database first figures out which table to read (FROM), then filters rows (WHERE), then groups and counts (GROUP BY), then filters groups (HAVING), then selects the columns you want (SELECT), then sorts (ORDER BY), then limits the output (LIMIT). This is the logical execution order — and it explains why you cannot use a column alias from SELECT inside a WHERE clause. The WHERE runs before SELECT, so the alias does not exist yet.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Window Functions</h4>
-      <p>OVER(PARTITION BY ... ORDER BY ...) — aggregate over a sliding window without collapsing rows. ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, SUM OVER, AVG OVER. Essential for ranking, running totals, and comparing adjacent rows.</p>
+      <p>Imagine you want each employee's salary AND the average salary for their department in the same row. GROUP BY cannot do this — it collapses all employees into one row per department. Window functions solve this: they calculate across a group of rows but keep every individual row intact. Think of PARTITION BY as "draw a box around each department," and ORDER BY as "rank people within that box." The result: every employee's row now also includes a department average, a rank, or a running total.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>CTEs (WITH clause)</h4>
-      <p>Named subqueries defined before the main query. Improve readability, enable recursion (WITH RECURSIVE for hierarchies and graphs), and can be referenced multiple times in one query statement.</p>
+      <p>A CTE (Common Table Expression) is a way to give a subquery a name and define it at the top of your query, before the main SELECT. Think of it like assigning a variable in code — instead of burying a complex subquery inside your SELECT, you write it once at the top with a clear name and then use that name in the query below. This makes complex queries much easier to read. CTEs also unlock recursive queries, which can walk through tree structures like an org chart or a set of folder paths.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>EXPLAIN / EXPLAIN ANALYZE</h4>
-      <p>Shows the execution plan: node types (SeqScan, IndexScan, HashJoin), estimated vs actual rows, cost estimates. EXPLAIN ANALYZE actually executes the query. Essential for performance debugging.</p>
+      <p>When a query is slow, you need to see what the database is actually doing. EXPLAIN shows the plan the database intends to follow — like the blueprint before the building. EXPLAIN ANALYZE actually runs the query and shows what really happened: how many rows were read, how long each step took, and whether the database's guesses about row counts were accurate. This is the most important tool for diagnosing why a query is slow.</p>
     </div>
   </div>
 
   <div class="section-label">How It Works</div>
   <h2 class="section-title">Logical Query Execution Order</h2>
   <div class="steps">
-    <div class="step-item"><div class="step-num">1</div><div><h4>FROM + JOIN</h4><p>Tables are resolved and joined first. This is why you can reference a JOIN alias in WHERE but not a column alias defined in SELECT — SELECT has not happened yet. The join produces an intermediate virtual table that subsequent clauses operate on.</p></div></div>
-    <div class="step-item"><div class="step-num">2</div><div><h4>WHERE</h4><p>Rows filtered by predicate against raw column values. Evaluated before GROUP BY — cannot filter on aggregate results here (that is HAVING). Pushing selective predicates into WHERE early is the single biggest query optimization available.</p></div></div>
-    <div class="step-item"><div class="step-num">3</div><div><h4>GROUP BY + Aggregates</h4><p>Rows collapsed into groups. Every column in SELECT must either be in GROUP BY or wrapped in an aggregate (COUNT, SUM, AVG, MIN, MAX). Non-aggregated columns outside GROUP BY are undefined in standard SQL.</p></div></div>
-    <div class="step-item"><div class="step-num">4</div><div><h4>HAVING</h4><p>Filters groups based on aggregated values. <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">HAVING COUNT(*) &gt; 5</code> — unlike WHERE, can reference aggregate results. Push filters into WHERE when possible to reduce rows before grouping.</p></div></div>
-    <div class="step-item"><div class="step-num">5</div><div><h4>SELECT + Window Functions</h4><p>Columns are projected. Window functions are evaluated here, after GROUP BY — they can operate across a frame of rows without collapsing them. This is why window functions can reference aggregated columns from earlier steps.</p></div></div>
-    <div class="step-item"><div class="step-num">6</div><div><h4>ORDER BY + LIMIT</h4><p>Results sorted and truncated. LIMIT without ORDER BY returns arbitrary rows — never rely on implicit ordering. OFFSET is O(n) — avoid for deep pagination. Use keyset (cursor) pagination instead.</p></div></div>
+    <div class="step-item"><div class="step-num">1</div><div><h4>FROM + JOIN</h4><p>The very first thing the database does is figure out which tables to read and stitch them together. All the joins happen here, creating one big combined table in memory. This is why you can reference tables from a JOIN in your WHERE clause — they already exist. But a column alias you define in SELECT does not exist yet — SELECT has not happened yet.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>WHERE</h4><p>Now the database goes through every row and throws out ones that do not match your filter condition. The sooner you filter, the less work the later steps have to do. This is the most impactful place to speed up a query — a good WHERE clause with a good index can reduce 10 million rows to 100 before any grouping happens. Note: you cannot filter on counts or averages here — that is what HAVING is for.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>GROUP BY + Aggregates</h4><p>When you want totals, counts, or averages — this is the step where rows get bucketed into groups. All employees in the same department become one group. Then COUNT(*), SUM(salary), AVG(salary) and similar functions calculate one result per group. In SELECT, every column must either be part of the grouping or be inside an aggregate — otherwise the database would not know which row's value to show.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>HAVING</h4><p>WHERE filters individual rows. HAVING filters groups — it runs after GROUP BY, so it can see the results of aggregations. For example, "show me only departments where the average salary is above $70,000" — that average does not exist until after GROUP BY, so it belongs in HAVING, not WHERE.</p></div></div>
+    <div class="step-item"><div class="step-num">5</div><div><h4>SELECT + Window Functions</h4><p>Only now does the database pick which columns to include in the result. Window functions also run at this stage — they can see all the grouped data and add things like "rank within group" or "running total" to each row without collapsing them into fewer rows. This is why window functions are so powerful: they add context to each row without losing the row.</p></div></div>
+    <div class="step-item"><div class="step-num">6</div><div><h4>ORDER BY + LIMIT</h4><p>Finally, the result is sorted and trimmed to the requested size. LIMIT without ORDER BY is dangerous — the database picks rows in whatever order is convenient, which can change between runs. Always pair LIMIT with ORDER BY if you care about which rows you get. And if you are paginating through many pages, avoid skipping thousands of rows — that is slow. Instead, remember the last ID you saw and filter from there next time.</p></div></div>
   </div>
 
   <div class="section-label">JOIN Types</div>
@@ -195,11 +195,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>SQL = DDL + DML + DCL</strong> — DDL defines schema; DML queries and mutates; DCL controls access with GRANT/REVOKE.</li>
-      <li><strong>Window functions</strong> (ROW_NUMBER, RANK, LAG) operate over a partition without collapsing rows like GROUP BY.</li>
-      <li><strong>EXPLAIN ANALYZE</strong> reveals the execution plan with actual row counts — always check before deploying a slow query.</li>
-      <li><strong>CTEs</strong> (WITH clause) improve readability and enable recursive queries (e.g. tree traversal with WITH RECURSIVE).</li>
-      <li>OFFSET-based pagination is O(n) — use keyset pagination (WHERE id &gt; last_id) for production feeds.</li>
+      <li><strong>SQL has three jobs:</strong> DDL defines the shape of your tables (CREATE, ALTER). DML reads and writes data (SELECT, INSERT, UPDATE, DELETE). DCL controls who can do what (GRANT, REVOKE).</li>
+      <li><strong>Window functions</strong> (ROW_NUMBER, RANK, LAG) let you rank or compare rows within a group without losing the individual rows. GROUP BY collapses rows; window functions keep them.</li>
+      <li><strong>EXPLAIN ANALYZE</strong> shows you exactly what the database did to answer your query. If a query is slow, run this first — it shows where the time went and whether an index was used.</li>
+      <li><strong>CTEs (WITH clause)</strong> let you name a subquery and reuse it. WITH RECURSIVE lets you walk tree structures like org charts or category hierarchies.</li>
+      <li><strong>Avoid OFFSET for large tables.</strong> Skipping 10,000 rows to show "page 500" makes the database read all those rows just to throw them away. Instead, track the last ID you saw and filter from there.</li>
     </ul>
   </div>
 
@@ -210,28 +210,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Read Bottom-Up</h4>
-        <p>The execution plan is a tree. The bottom nodes are leaf operations (table scans). The top is the final result. Execution flows from leaves to root. Start at the deepest, most-indented level to find where the most time is spent.</p>
+        <p>The EXPLAIN output is a tree structure. The deepest, most-indented lines are the first steps — usually reading from a table or using an index. The top line is the last step — returning the final result. Execution flows from the bottom up. When looking for where time is being wasted, start at the bottom and look for steps that read many more rows than expected, or that have a long execution time.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Compare Estimated vs Actual Rows</h4>
-        <p>EXPLAIN ANALYZE shows <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">rows=100 (actual rows=95000)</code> when estimates are wrong. A 950x mismatch means stale statistics — run <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">ANALYZE table_name</code> to refresh. Bad estimates lead to wrong join algorithms and poor plan choices.</p>
+        <p>EXPLAIN ANALYZE shows two numbers for each step: how many rows the database guessed it would process (estimated), and how many it actually processed. If the estimate is 100 but the actual is 95,000, the database was wildly wrong — and it probably made bad decisions because of that. The fix is to update the statistics the database uses to make estimates, by running ANALYZE on the table. Fresh statistics help the optimizer make better plans.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Spot Seq Scans on Large Tables</h4>
-        <p>A sequential scan on a 10M-row table reading 10K rows is a sign of a missing index or a non-sargable predicate (function on the column). The cost shown is proportional to total rows read — even filtered ones cost I/O.</p>
+        <p>A "Seq Scan" means the database is reading every single row in the table from start to finish — like reading an entire book to find one sentence. On a small table this is fine. On a table with millions of rows, this is slow. If you see a Seq Scan on a large table, it usually means there is no index for the column in your WHERE clause, or you are using a function on the column that prevents the index from being used. Adding an appropriate index typically fixes this.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Check Join Types</h4>
-        <p>Hash Join is good for large unsorted tables. Nested Loop with an index is good for small result sets. If the optimizer chose Nested Loop for a large table join without an index, that is where a slow query is hiding. Add the missing join-column index.</p>
+        <p>The database has a few strategies for joining two tables. A Hash Join is good when both tables are large — it builds an in-memory hash table and looks things up quickly. A Nested Loop join is efficient when one side is small and there is an index on the join column. If you see a Nested Loop join between two large tables with no index, that is usually the source of a slow query. Adding an index on the join column is the fix.</p>
       </div>
     </div>
   </div>

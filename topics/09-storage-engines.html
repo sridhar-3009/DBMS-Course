@@ -26,7 +26,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 09</div>
     <h1>Storage <span class="accent">Engines</span></h1>
-    <p class="subtitle">InnoDB internals, Write-Ahead Logging, buffer pools, LSM trees — how databases actually persist data to disk and recover from failures.</p>
+    <p class="subtitle">When you save something in a database, where does it actually go? How does the database survive a power outage without losing your data? This topic covers what happens under the hood: the journal that makes writes safe, the memory cache that makes reads fast, and the two main ways databases store data on disk.</p>
     <div class="company-badges">
       <span class="badge">InnoDB (MySQL)</span><span class="badge">PostgreSQL heap</span>
       <span class="badge">RocksDB (LSM)</span><span class="badge">WiredTiger (MongoDB)</span><span class="badge">MyISAM</span>
@@ -36,11 +36,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>InnoDB</strong>B+tree clustered index, row-level locking, MVCC, WAL (redo log), buffer pool.</li>
-      <li><strong>WAL (Write-Ahead Log)</strong>changes are logged before being applied to data pages. Enables redo recovery.</li>
-      <li><strong>LSM tree</strong>writes go to an in-memory memtable, flushed to sorted SSTables. High write throughput, compaction cost.</li>
-      <li><strong>Buffer pool</strong>LRU cache of disk pages in RAM. Hit rate target is 99%+ in production.</li>
-      <li><strong>Vacuum / compaction</strong>reclaims space from deleted rows/versions. Critical for MVCC storage health.</li>
+      <li><strong>InnoDB</strong> — MySQL's default storage engine. Stores rows in a B+tree organized by primary key. Supports real transactions, row-level locking, and crash recovery via a journal (called the redo log or WAL).</li>
+      <li><strong>WAL (Write-Ahead Log)</strong> — before touching any data on disk, the database first writes a record of the change to a journal file. If the machine crashes, the journal can replay all committed changes and restore the database to a safe state.</li>
+      <li><strong>LSM tree</strong> — an alternative storage design that accepts all writes into memory first, then flushes them to sorted files on disk in batches. Much faster for write-heavy workloads; slightly slower for reads. Used by RocksDB, Cassandra, and others.</li>
+      <li><strong>Buffer pool</strong> — a large chunk of RAM where the database caches recently used pages of data. Reading from RAM is thousands of times faster than reading from disk, so the goal is to keep frequently accessed data in the buffer pool at all times.</li>
+      <li><strong>Vacuum / compaction</strong> — deleted rows are not immediately removed from disk; they leave behind dead space. VACUUM (PostgreSQL) and compaction (LSM engines) periodically clean up that space so the database does not bloat over time.</li>
     </ul>
   </div>
 
@@ -49,22 +49,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Pages &amp; Buffer Pool</h4>
-      <p>Data stored in fixed-size pages (typically 4KB–16KB). Buffer Pool is an in-memory page cache. Dirty pages (modified but not flushed) are written to disk on checkpoint or eviction.</p>
+      <p>Think of a database like a book. The database does not read one word at a time — it reads a whole page at a time. Each page is typically 8KB or 16KB and contains many rows. The buffer pool is the database's working desk: recently used pages sit in RAM so they can be read instantly. When a page is modified but not yet saved to disk, it is called a dirty page. The database writes dirty pages to disk in the background.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Write-Ahead Log (WAL)</h4>
-      <p>Log changes BEFORE applying them to data pages. On crash, replay the log. Ensures durability: a COMMIT can return as soon as the WAL record is flushed — data pages can follow lazily.</p>
+      <p>Imagine a chef who writes every step in a notebook before doing anything in the kitchen. If the kitchen catches fire mid-recipe, you can replay the notebook and pick up exactly where things went wrong. The WAL is that notebook. Every change is written to the journal before it touches the actual data. A transaction is considered committed the moment the journal entry is safely on disk — the data page itself can be updated later at a convenient time.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>LSM Trees</h4>
-      <p>Log-Structured Merge Tree: writes to an in-memory memtable, periodically flushed to sorted SSTables on disk. Background compaction merges levels. Optimized for write-heavy workloads.</p>
+      <p>Traditional databases update data in place on disk, which involves a lot of jumping around (random I/O). LSM trees take a different approach: every write lands in memory first (in a structure called the memtable), and once memory fills up, the batch is written to disk sequentially — like appending to a log file. Sequential writes are much faster than random ones. The tradeoff is that reads may need to check multiple sorted files, and background work called compaction periodically merges those files to keep reads manageable.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Checkpoints &amp; Recovery</h4>
-      <p>Checkpoint: flush all dirty pages and record WAL position. On crash recovery, only replay WAL from last checkpoint. Reduces recovery time proportional to checkpoint frequency.</p>
+      <p>Think of a checkpoint like a save point in a video game. Periodically, the database takes all the dirty pages from memory and writes them to disk, then marks the current position in the journal. If the machine crashes later, recovery only needs to replay the journal from the last checkpoint — not from the very beginning. More frequent checkpoints mean faster recovery after a crash, but slightly more disk activity while the database is running.</p>
     </div>
   </div>
 
@@ -78,28 +78,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Page structure</h4>
-        <p>Each page has: a page header (page number, free space pointer, LSN), the actual row data (slots growing from the start), a slot directory (offsets into the page, growing from the end), and free space in the middle. Rows are stored in slots; new rows occupy free space. When free space is exhausted, the page is full and a new page must be allocated.</p>
+        <p>A database page is like a physical sheet of paper in a filing folder. At the top is a header with bookkeeping information — the page number, how much free space is left, and a sequence number (called the LSN) that the journal uses to track which changes have been applied. The middle holds the actual row data. A small directory at the bottom keeps track of where each row starts within the page. When the page fills up, a new page is allocated — like adding a new sheet to the folder.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Fill factor</h4>
-        <p>InnoDB's default fill factor is 15/16 (about 93%) for new pages — leaving ~7% free for future updates/inserts without requiring immediate page splits. PostgreSQL uses a configurable <code>fillfactor</code> storage parameter per table (default 100% for tables, 90% for indexes). Setting fillfactor to 70-80% on heavily updated tables reduces page splits and HOT (Heap Only Tuple) updates become more common.</p>
+        <p>If you pack a page completely full, the next INSERT has nowhere to go and the database must split the page in two — an expensive operation. Fill factor is the setting that controls how full a page is allowed to get before the database considers it "full." InnoDB leaves about 7% empty by default. PostgreSQL lets you configure this per table. For tables that receive lots of updates, leaving extra free space (setting fillfactor to 70-80%) means updates can fit on the same page rather than spilling to a new one.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>HOT updates (PostgreSQL)</h4>
-        <p>A Heap Only Tuple (HOT) update is possible when: (1) the new version fits on the same page as the old version, and (2) no indexed columns changed. In a HOT update, the index entry is NOT updated — a pointer chain inside the heap page links old to new. This dramatically reduces index maintenance overhead for UPDATE-heavy workloads. Regular VACUUM cleans up the pointer chain.</p>
+        <p>In PostgreSQL, every UPDATE creates a new version of the row rather than changing it in place. Normally this also requires updating every index that points to that row — which is expensive if you have many indexes. A HOT update (Heap Only Tuple) is a special shortcut: if the new version fits on the same page and none of the indexed columns changed, PostgreSQL can skip updating the indexes entirely and just leave a pointer inside the page from the old row to the new one. This is much cheaper for tables with frequent small updates on non-indexed columns.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Page fragmentation</h4>
-        <p>As rows are deleted and updated, pages develop fragmentation: half-empty pages with gaps between rows. This wastes I/O (each page read brings back less useful data) and wastes storage. PostgreSQL's VACUUM FULL and InnoDB's OPTIMIZE TABLE physically rewrite the table, compacting pages. This is expensive (full table scan + rewrite) and locks the table — use CONCURRENTLY/ONLINE variants where available.</p>
+        <p>Imagine a notebook where you keep erasing entries. Over time, the notebook has lots of half-empty pages with gaps scattered throughout. Every time you read a page, you bring back a full 8KB from disk — but if half of it is empty space, you wasted that read. This is fragmentation. PostgreSQL's VACUUM FULL and InnoDB's OPTIMIZE TABLE physically rewrite the entire table from scratch, packing rows together tightly. The downside is that this operation locks the table and takes a while — so it is not something you do casually on a large production table.</p>
       </div>
     </div>
   </div>
@@ -136,28 +136,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Memtable and immutable memtable</h4>
-        <p>All writes go to the active memtable (in-memory sorted structure, typically a skip list). When full (typically 64MB–256MB), it is converted to an immutable memtable and a new active memtable is created. The immutable memtable is flushed to disk as an SSTable in the background. A WAL (write-ahead log) provides durability for the in-memory data.</p>
+        <p>All incoming writes land in memory first, in a sorted structure called the memtable. Think of it as an in-progress draft document. Once it reaches a size limit (typically 64MB to 256MB), it is "sealed" — no more writes go to it. A fresh memtable takes over for new writes, while the sealed one (now immutable) is flushed to disk in the background. A WAL journal backs the in-memory data so nothing is lost if the machine crashes before the flush completes.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>SSTables and bloom filters</h4>
-        <p>An SSTable (Sorted String Table) is an immutable file of sorted key-value pairs. Each SSTable has a bloom filter — a probabilistic data structure that quickly answers "is key K definitely not in this file?" (with zero false negatives). On a point lookup, the bloom filter eliminates most SSTables with a single bit-array check, reducing I/O from O(files) to O(1) in the common case.</p>
+        <p>When the memtable is flushed to disk, it becomes a sorted, immutable file called an SSTable (Sorted String Table). Over time many SSTables accumulate, and looking up a key might require checking several of them. To speed this up, each SSTable carries a bloom filter — a small lookup structure that can quickly answer "is this key definitely NOT in this file?" If the bloom filter says no, the whole file is skipped. This reduces a lookup that might scan dozens of files down to checking just one or two.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Leveled compaction (RocksDB default)</h4>
-        <p>SSTables are organized into levels (L0, L1, L2, ...). L0 receives fresh flushes — multiple L0 files may overlap in key range. Compaction merges L0 files into L1 (eliminating overlaps), L1 into L2, and so on. Each level is ~10× larger than the previous. This minimizes space amplification and read amplification at the cost of write amplification (data is rewritten at each level). Good for mixed workloads.</p>
+        <p>SSTables are organized into levels. Level 0 holds newly flushed files and may have overlapping key ranges. Compaction periodically merges L0 files into Level 1, then Level 1 into Level 2, and so on — each level being about 10x larger than the previous. Within Levels 1 and up, key ranges never overlap, which makes lookups fast (at most one file per level to check). The tradeoff is that data is physically rewritten multiple times as it moves through levels. This is called write amplification, and it is the main cost of the LSM approach.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Size-tiered compaction (Cassandra default)</h4>
-        <p>SSTables of similar size are merged together. All SSTables may contain overlapping key ranges. This minimizes write amplification but maximizes space and read amplification — on a read, potentially many SSTables must be checked. Best for write-heavy workloads where you rarely read back. Cassandra also offers Leveled Compaction (better reads, more I/O) and TWCS (Time-Window Compaction Strategy, excellent for time-series with natural TTL expiry).</p>
+        <p>Instead of organizing files by level, size-tiered compaction groups SSTables that are similar in size and merges them together. This avoids the high write amplification of leveled compaction — data is not rewritten as many times. The tradeoff is that multiple files may cover the same key range, so reads may need to check more files. This strategy works best for write-heavy workloads where you mostly append and rarely look up individual records. Cassandra also offers a Time-Window Compaction Strategy (TWCS) which is ideal for time-series data that naturally expires after a fixed period.</p>
       </div>
     </div>
   </div>
@@ -165,11 +165,11 @@
   <div class="section-label">How It Works</div>
   <h2 class="section-title">InnoDB Write Path</h2>
   <div class="steps">
-    <div class="step-item"><div class="step-num">1</div><div><h4>Write to Redo Log (WAL)</h4><p>The change is first written to the redo log buffer (in memory), then flushed to the redo log files on disk. This is the durability guarantee — once the log is flushed, the commit can succeed even if the data page isn't on disk yet.</p></div></div>
-    <div class="step-item"><div class="step-num">2</div><div><h4>Modify Page in Buffer Pool</h4><p>The data page is loaded from disk into the buffer pool (if not already cached). The change is applied to the in-memory page. The page is marked "dirty" — modified but not yet written to disk.</p></div></div>
-    <div class="step-item"><div class="step-num">3</div><div><h4>Undo Log Entry</h4><p>An undo record is written (for rollback support and MVCC). If the transaction aborts, the undo log provides the "before image" to restore. PostgreSQL instead writes a new version (tuple) and marks the old xmax.</p></div></div>
-    <div class="step-item"><div class="step-num">4</div><div><h4>Background Flush (Checkpoint)</h4><p>Dirty pages are flushed to disk in the background by the page cleaner thread. A checkpoint records the minimum LSN (Log Sequence Number) that needs to be replayed on recovery. More frequent checkpoints = faster recovery + more I/O.</p></div></div>
-    <div class="step-item"><div class="step-num">5</div><div><h4>Crash Recovery: ARIES</h4><p>Analysis phase: scan log to find dirty pages and in-progress transactions. Redo phase: replay all changes from last checkpoint (restore committed state). Undo phase: rollback uncommitted transactions using undo logs.</p></div></div>
+    <div class="step-item"><div class="step-num">1</div><div><h4>Write to Redo Log (WAL)</h4><p>Before any data page on disk is touched, the change is first recorded in the redo log (the journal). Once that journal entry is safely written to disk, the transaction is considered committed. This is the key insight: writing to a sequential journal file is fast; writing to a random location in a data file is slow. The journal entry is the durable record of what happened.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Modify Page in Buffer Pool</h4><p>The relevant data page is loaded from disk into the buffer pool (if it is not already there). The change is applied to the in-memory copy of the page. The page is now "dirty" — its content in memory does not match what is on disk. It will be written to disk later, in the background.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>Undo Log Entry</h4><p>Alongside the redo log, InnoDB writes an undo record — a "before photo" of what the row looked like before the change. If the transaction is rolled back, InnoDB uses the undo record to put the row back to its original state. This also supports MVCC: other transactions can read the old version of the row from the undo log even while your transaction is mid-flight.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Background Flush (Checkpoint)</h4><p>Dirty pages sit in memory until a background process writes them to disk. Periodically, the database performs a checkpoint: it flushes all dirty pages and records exactly where in the journal it has caught up to. This is the save-game moment. If the database crashes after a checkpoint, it only needs to replay the journal from that point forward — not from the beginning of time.</p></div></div>
+    <div class="step-item"><div class="step-num">5</div><div><h4>Crash Recovery: ARIES</h4><p>After a crash, the database runs through three phases. First, the Analysis phase scans the journal from the last checkpoint to figure out which transactions were in-flight and which pages were dirty. Second, the Redo phase replays every change in the journal — both committed and uncommitted — to restore the database to the exact state it was in at the moment of the crash. Third, the Undo phase rolls back any transactions that had not yet committed, using the undo logs. This three-phase process is called ARIES recovery.</p></div></div>
   </div>
 
   <div class="code-block">

@@ -26,7 +26,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 07</div>
     <h1>Query <span class="accent">Processing</span></h1>
-    <p class="subtitle">From SQL string to query execution plan — parsing, optimization, join algorithms, and how the DBMS picks the cheapest strategy using statistics.</p>
+    <p class="subtitle">When you type a SQL query, the database does not just run it blindly. It reads the query, validates it, thinks about several ways it could be answered, picks the fastest approach, and then executes it. This topic pulls back the curtain on that process — from the moment you press Enter to the moment rows come back.</p>
     <div class="company-badges">
       <span class="badge">PostgreSQL</span><span class="badge">MySQL</span><span class="badge">SQL Server</span>
       <span class="badge">BigQuery</span><span class="badge">Presto</span>
@@ -36,11 +36,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>Query pipeline</strong> — Parse &rarr; Validate &rarr; Rewrite &rarr; Optimize &rarr; Execute.</li>
-      <li><strong>Cost-based optimizer</strong> uses table statistics (row count, data distribution, index cardinality) to compare plans.</li>
-      <li><strong>Nested loop join</strong> — O(n&times;m), fast when inner table has an index. <strong>Hash join</strong> — O(n+m), best for large un-indexed joins.</li>
-      <li><strong>Sort-merge join</strong> — efficient when both sides are already sorted or have matching indexes.</li>
-      <li><strong>EXPLAIN ANALYZE</strong> shows actual vs estimated rows — large discrepancies indicate stale statistics.</li>
+      <li><strong>Query pipeline</strong> — every SQL query goes through five steps before returning results: Parse (read and understand the SQL), Validate (check names and permissions), Rewrite (clean up and expand views), Optimize (pick the fastest plan), Execute (actually do the work).</li>
+      <li><strong>Cost-based optimizer</strong> — the database keeps statistics about how many rows are in each table and how the data is distributed. It uses those numbers to estimate how much work each possible plan would take, then picks the cheapest one.</li>
+      <li><strong>Nested loop join</strong> — for each row in the first table, look up the matching row in the second table. Great when the second table has an index and the first is small. Terrible for large tables without indexes.</li>
+      <li><strong>Hash join</strong> — build a lookup table from the smaller dataset, then probe it with rows from the larger. Efficient for large un-indexed joins as long as the lookup table fits in memory.</li>
+      <li><strong>EXPLAIN ANALYZE</strong> — shows the database's plan and compares estimated row counts to actual row counts. A big mismatch means the statistics are stale — run ANALYZE to update them.</li>
     </ul>
   </div>
 
@@ -49,32 +49,32 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Query Optimizer</h4>
-      <p>Enumerates possible execution plans, estimates cost (I/O + CPU) using table statistics, and selects the minimum-cost plan. Cost-based optimizers use histograms, distinct value counts, and multi-column statistics.</p>
+      <p>Think of the query optimizer as a travel planner. You say "get me from A to B." It considers multiple routes (execution plans), estimates how long each would take based on current conditions (table statistics — like traffic data), and picks the fastest route. A good optimizer can make the difference between a query that takes 10 seconds and one that takes 10 milliseconds. It uses statistics about how many rows are in each table and how data is distributed to make its estimates.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Join Algorithms</h4>
-      <p>Nested Loop (small inner table with index), Hash Join (one side fits in memory), Merge Join (both sides sorted). The optimizer picks based on table sizes, available indexes, and work_mem settings.</p>
+      <p>When two tables need to be joined, the database has three main strategies. Nested Loop: for each row on one side, look up the matching row on the other — simple, but slow for large tables unless there is an index. Hash Join: build a lookup table from the smaller side in memory, then quickly find matches — great for large joins. Merge Join: if both sides are already sorted in the same order, walk through them in sync — very efficient when the sort is "free" from an existing index.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Statistics and Cardinality</h4>
-      <p>Histograms track value distribution. Cardinality estimates predict how many rows survive filters. Bad estimates lead to bad plans. ANALYZE refreshes statistics. Stale stats are the #1 cause of plan regressions.</p>
+      <p>The optimizer needs to guess how many rows a filter will return — for example, how many employees earn over $80,000. This guess is called a cardinality estimate. To make good guesses, the database maintains statistics: rough summaries of how data is distributed in each column (like a histogram). When statistics are stale (out of date after large inserts or deletes), the guesses are wrong, the optimizer picks a bad plan, and queries get slow. Running ANALYZE updates the statistics and usually fixes this.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Materialized Views</h4>
-      <p>Precomputed query results stored on disk. Trade stale data for instant reads. Used for expensive aggregations, complex joins, and BI dashboards. REFRESH MATERIALIZED VIEW CONCURRENTLY avoids read locks.</p>
+      <p>A regular view is just a saved query — every time you query it, the database runs the full computation. A materialized view is a view whose results are pre-computed and stored on disk like a table. Querying it is instant. The trade-off: the stored results can become stale when the underlying tables change. You need to refresh the materialized view periodically. Best for expensive reports or dashboards where slightly outdated data is acceptable and the query itself takes seconds to compute.</p>
     </div>
   </div>
 
   <div class="section-label">How It Works</div>
   <h2 class="section-title">Query Lifecycle</h2>
   <div class="steps">
-    <div class="step-item"><div class="step-num">1</div><div><h4>Parse</h4><p>SQL text is tokenized, syntax-checked, and converted to a parse tree. Semantic analysis validates table and column names, checks data types, and verifies user permissions. Any error here surfaces before touching data.</p></div></div>
-    <div class="step-item"><div class="step-num">2</div><div><h4>Rewrite (Rule System)</h4><p>Rewrite rules expand views inline, apply row-level security policies, simplify subqueries, and push down predicates. PostgreSQL's rule system transforms the parse tree before planning. This step is transparent to the user.</p></div></div>
-    <div class="step-item"><div class="step-num">3</div><div><h4>Plan (Optimize)</h4><p>Generate candidate plans using dynamic programming. For each plan node, estimate cost = (I/O cost x pages) + (CPU cost x rows). Select the minimum-cost complete plan. For more than 8 tables, PostgreSQL switches to a genetic algorithm (GEQO) to avoid exponential search.</p></div></div>
-    <div class="step-item"><div class="step-num">4</div><div><h4>Execute (Volcano Model)</h4><p>Walk the plan tree. Each operator implements GetNext() on its children — data flows upward one tuple (or batch) at a time. Sort and Aggregate nodes may buffer all input before producing output. Modern engines use vectorized execution for SIMD throughput.</p></div></div>
+    <div class="step-item"><div class="step-num">1</div><div><h4>Parse</h4><p>The database reads your SQL text like a compiler reads source code. It checks for syntax errors, confirms that the table names and column names actually exist, verifies the data types make sense, and checks that you have permission to access those tables. If anything is wrong at this stage, you get an error before any data is even looked at.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Rewrite (Rule System)</h4><p>Before planning, the database silently rewrites your query to make it complete and safe. If you referenced a view (a saved query with a name), it replaces the view name with the actual query behind it. If there are row-level security rules (for example, "this user can only see their own data"), those get injected here. The final query may look quite different internally from what you wrote — but the result is always the same.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>Plan (Optimize)</h4><p>This is where the database decides how to answer your query. It generates multiple candidate plans and estimates the cost of each one — counting disk reads, CPU work, and memory. It picks the cheapest plan. For queries that join many tables, the number of possible plans explodes exponentially, so the optimizer uses smart search strategies (like dynamic programming) to find a good plan quickly without trying every possibility.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Execute (Iterator Model)</h4><p>The execution works like an assembly line. The plan is a tree of operations — scan a table, filter rows, join, sort, aggregate. Each step asks the step below it "give me the next row," processes it, and passes it up. This pull-based approach is called the Iterator model (sometimes called the Volcano model). It is memory-efficient because only a few rows are in-flight at any given moment. Modern analytical databases process larger batches at once for better speed.</p></div></div>
   </div>
 
   <div class="section-label">Join Algorithm Deep Dive</div>
@@ -84,28 +84,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Nested Loop Join</h4>
-        <p>For each row in the outer (smaller) relation, scan the inner relation for matching rows. Without an index: O(n x m) — catastrophic for large tables. With an index on the inner join key: O(n log m) — excellent for small outer results. The optimizer picks this when the outer side is small (a few hundred rows after filtering) and the inner has an index.</p>
+        <p>The simplest join strategy: for each row on one side, go look up the matching rows on the other side. If you are looking up a customer's orders, this is like reading each customer's row, then going to find their orders. Without an index on the orders table, you scan the entire orders table for every customer — very slow. With an index, each lookup is fast. The optimizer uses this when one side is small and the other side has an index on the join column.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Hash Join</h4>
-        <p>Phase 1 (Build): scan the smaller relation and build a hash table keyed on the join column, loading it into <code>work_mem</code>. Phase 2 (Probe): scan the larger relation and probe the hash table for each row. Time: O(n+m). Space: O(min(n,m)). If the build side does not fit in memory, the DBMS spills to disk (batch hash join). Best for large, unsorted, un-indexed joins.</p>
+        <p>A smarter approach for large tables without indexes. In the first step (Build), the database reads the smaller table and builds a hash table in memory — like creating a quick-lookup dictionary. In the second step (Probe), it reads the larger table row by row and looks each row up in that dictionary. This is much faster than nested loop for large data because each lookup is nearly instant. The catch: the hash table (dictionary) needs to fit in memory. If it is too large, the database has to spill some of it to disk, which is slower.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Sort-Merge Join</h4>
-        <p>Both inputs are sorted on the join key. Walk both sorted lists in lockstep, emitting matching pairs. Time: O(n log n + m log m) if sorting is required. If both sides already have matching sorted indexes, the sort cost disappears — the join is essentially free beyond the I/O. Produces sorted output, which can eliminate a downstream sort node.</p>
+        <p>If both tables are already sorted by the join column (because of an index), this strategy is very efficient. Imagine merging two sorted decks of cards — you just look at the top of each deck, match pairs, and advance. You walk through both tables simultaneously in order, picking up matching pairs. If the tables are not already sorted, the database has to sort them first, which adds cost. But if an index provides the sorted order for free, this join type needs minimal extra work and produces results in sorted order — potentially eliminating a later ORDER BY step.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Optimizer Choice Heuristics</h4>
-        <p>Rule of thumb: Index Nested Loop for small outer results with an indexed inner. Hash Join for large unsorted tables where one side fits in memory. Sort-Merge for already-sorted inputs or when sorted output is needed. The optimizer may choose differently based on cardinality estimates — if estimates are wrong, use ANALYZE, add statistics, or as a last resort use plan hints.</p>
+        <p>You do not need to tell the database which join algorithm to use — the optimizer decides based on the situation. As a rough guide: Nested Loop with an index is best when one side is small (a few hundred rows) and the other has an index. Hash Join is best for large tables without useful indexes. Sort-Merge is best when both sides are already sorted or when sorted output is needed downstream. If the optimizer makes a bad choice (usually because its statistics are outdated), refresh them with ANALYZE and the plan usually improves.</p>
       </div>
     </div>
   </div>
@@ -257,21 +257,21 @@
       <div class="step-num">1</div>
       <div>
         <h4>What It Is</h4>
-        <p>Predicate pushdown moves WHERE conditions as early as possible in the query plan — ideally into the table scan. This reduces the number of rows that flow through expensive join and aggregation nodes above.</p>
+        <p>Predicate pushdown is an optimization where the database moves your WHERE filter as early as possible in the execution plan — ideally right when reading the table. The idea is to throw away irrelevant rows as soon as possible, so expensive operations like joins and aggregations have less data to process. The database applies this automatically — you just write a good WHERE clause.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Example: 20x Smaller Join</h4>
-        <p>Without pushdown: join 1M employees x 200 departments (200M combinations), then filter for dept='Engineering'. With pushdown: filter employees first (1M &rarr; 50K), then join (50K x 200 = 10M combinations). The join input is 20x smaller.</p>
+        <p>Imagine joining 1 million employees with 200 departments, then filtering for only the Engineering department. Without pushdown, the join produces 200 million row combinations and then throws most away. With pushdown, the database first filters down to the ~50,000 Engineering employees, then joins only those 50,000 with the 200 departments. The join is 20 times smaller. Same final result — but the work is dramatically reduced.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Distributed Systems Impact</h4>
-        <p>In Spark or BigQuery, predicate pushdown to the storage layer (Parquet column pruning, partition elimination) can avoid reading entire files. A query on one month of partitioned data should read only that month's files — not all years. Always partition on the most common filter columns.</p>
+        <p>In large-scale analytics tools (like Spark, BigQuery, or Snowflake), predicate pushdown becomes even more powerful. If your data is partitioned by date (meaning each month's data is in a separate file), and you query only January, the database only reads January's file — it skips the rest entirely. This can reduce the amount of data read from gigabytes to megabytes. Designing your data partitioning around your most common filters is one of the highest-leverage optimizations in large-scale analytics.</p>
       </div>
     </div>
   </div>

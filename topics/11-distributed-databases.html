@@ -27,7 +27,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 11</div>
     <h1>Distributed <span class="accent">Databases</span></h1>
-    <p class="subtitle">Raft consensus, two-phase commit, consistent hashing, CAP theorem, replication strategies, and sharding — how Google Spanner and CockroachDB provide ACID at global scale.</p>
+    <p class="subtitle">A single computer can only store so much data and handle so many requests. When one machine is not enough, databases spread their data across many machines. That sounds simple, but it creates hard problems: how do all those machines agree on what the latest data is? What happens when the network between them fails? This topic explains how modern databases solve those problems.</p>
     <div class="company-badges">
       <span class="badge">Spanner (Google)</span><span class="badge">CockroachDB</span><span class="badge">YugabyteDB</span>
       <span class="badge">Vitess</span><span class="badge">TiDB</span>
@@ -37,11 +37,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>Raft consensus</strong> — leader election + log replication. Leader handles all writes; followers replicate. Majority quorum required for commit.</li>
-      <li><strong>CAP theorem</strong> — in a network partition, choose Consistency or Availability. Partition tolerance is not optional in any real distributed system.</li>
-      <li><strong>Sharding</strong> — horizontal partitioning. Range sharding is simple but creates hot spots; hash sharding distributes evenly but breaks range queries.</li>
-      <li><strong>2PC (Two-Phase Commit)</strong> — coordinator asks all participants to PREPARE, then commits if all agree. Blocks on coordinator failure — a fundamental limitation.</li>
-      <li><strong>PACELC model</strong> — extends CAP: even without partitions, there is a tradeoff between Latency and Consistency. All distributed systems trade somewhere.</li>
+      <li><strong>Raft consensus</strong> — a protocol for making a group of servers agree on a sequence of changes. One server is elected leader and handles all writes. The others follow. A change is only considered committed once a majority of servers have acknowledged it. If the leader dies, the remaining servers hold an election and pick a new one.</li>
+      <li><strong>CAP theorem</strong> — when the network between servers breaks, you face an unavoidable choice: either stop answering requests until the network is fixed (prioritizing Consistency), or keep answering requests even if some data might be stale (prioritizing Availability). No distributed system can avoid this trade-off.</li>
+      <li><strong>Sharding</strong> — splitting a huge table across multiple machines, each holding a slice of the data. Range sharding groups nearby keys together (great for range queries, but all new inserts might pile onto one machine). Hash sharding spreads data evenly but makes range queries expensive.</li>
+      <li><strong>2PC (Two-Phase Commit)</strong> — when a transaction spans multiple machines, this protocol coordinates them. First, every machine says "I'm ready to commit." Then, if all agree, the coordinator tells everyone to commit. The flaw: if the coordinator crashes between those two steps, the other machines are stuck waiting — holding locks indefinitely.</li>
+      <li><strong>PACELC model</strong> — even when nothing is broken, distributed systems still face a trade-off between responding fast (possibly with slightly stale data) or responding slowly (but guaranteed fresh). PACELC extends CAP to cover this everyday trade-off, not just the failure case.</li>
     </ul>
   </div>
 
@@ -54,22 +54,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Consistency (C)</h4>
-      <p>Every read receives the most recent write or an error. After a write commits, all subsequent reads from any node return that value. Linearizability is the strongest form of consistency. Requires coordination on every read/write.</p>
+      <p>Every read returns the most recent write. If you update a value on one server, any other server in the cluster must immediately reflect that update. To achieve this, servers must synchronize before responding — which adds latency. The strongest form, where reads always reflect writes in real time, is called linearizability. Examples: etcd, ZooKeeper, Spanner.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Availability (A)</h4>
-      <p>Every request receives a response — not an error. The system keeps serving reads and writes even if some nodes are unreachable. May return stale data. Cassandra, DynamoDB, and CouchDB prioritize availability.</p>
+      <p>Every request gets a response — the system never says "I am unavailable." Even if some servers are unreachable, the remaining ones keep serving requests. The trade-off is that those responses might be based on slightly stale data that has not yet been updated on that particular server. Examples: Cassandra, DynamoDB, and CouchDB prioritize staying available over being perfectly up to date.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Partition Tolerance (P)</h4>
-      <p>The system continues to operate despite network partitions (messages being dropped between nodes). All distributed systems must tolerate partitions — they are not optional. So the real choice is C vs A during a partition.</p>
+      <p>A network partition is when some servers in the cluster can no longer communicate with others — a cable gets cut, a router fails, a data center loses connectivity. Partition tolerance means the system keeps running despite this. Since network failures are inevitable at scale, partition tolerance is not a choice you can opt out of. Every real distributed system must be partition tolerant. The genuine choice is: when a partition happens, do you preserve Consistency or Availability?</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>PACELC Extension</h4>
-      <p>Even when there is no partition (the E in PACELC = "else"), there is still a tradeoff between Latency (L) and Consistency (C). Writing to 3 replicas before ACKing is consistent but slow. ACKing after 1 replica is fast but risks data loss. All systems trade.</p>
+      <p>CAP only tells you what happens during a network failure. But most of the time, nothing is broken — and even then, trade-offs exist. The PACELC model adds the everyday dimension: when there is no partition (E = "Else"), you still choose between Latency (fast but possibly stale) and Consistency (accurate but slower). Confirming a write on 3 servers before responding is correct but adds network round-trips. Confirming on 1 and updating the others in the background is fast but risks data loss if that one server crashes. Every distributed database lives somewhere on this spectrum.</p>
     </div>
   </div>
 
@@ -95,22 +95,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Raft Consensus</h4>
-      <p>Leader-based consensus for replicated logs. Leader handles all writes, replicates to followers. Majority quorum required for commit. Automatic leader election on failure. Simpler than Paxos — designed for understandability.</p>
+      <p>Raft is an algorithm for getting a group of servers to agree on a shared log of changes. Think of it like a group of people trying to keep a shared notebook in sync. One person (the leader) writes all new entries. Everyone else copies them. A new entry is considered official only once more than half of the group has written it down. If the leader drops out, the group holds a quick election and picks someone else. Raft was designed to be easier to understand than its predecessor, Paxos.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Sharding</h4>
-      <p>Partition data across multiple nodes by a shard key. Range sharding preserves key order (good for range queries, bad for hot spots). Hash sharding distributes uniformly (no hot spots, breaks range queries).</p>
+      <p>Imagine a library that has grown so large it cannot fit in one building. You split it across multiple buildings — "A-M" in one, "N-Z" in the other. Sharding does the same for databases: it splits rows across multiple machines based on a shard key. You need a strategy for how to split: Range sharding keeps rows in alphabetical or numerical order (good for range queries, but new rows might pile up at the end). Hash sharding scrambles the assignment (even distribution, but range queries become expensive).</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Replication</h4>
-      <p>Synchronous: wait for N replicas before ACK. Strong consistency, higher latency, zero data loss on failover. Asynchronous: ACK immediately, replicate in background. Low latency but possible data loss (RPO &gt; 0) on primary failure.</p>
+      <p>Replication means keeping copies of the same data on multiple machines so that if one fails, the others can take over. The key question is timing. Synchronous replication waits for the copies to confirm they received the data before telling the client "done" — no data is ever lost, but every write takes longer. Asynchronous replication tells the client "done" immediately and updates the copies in the background — faster writes, but if the primary crashes before the copies catch up, the recent writes are gone.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Two-Phase Commit</h4>
-      <p>Coordinator asks all participants to PREPARE. If all respond YES, coordinator sends COMMIT to all. Provides cross-shard atomicity. Critical flaw: if coordinator crashes after PREPARE but before COMMIT, participants are stuck holding locks indefinitely.</p>
+      <p>When a single transaction needs to update data on two or more separate machines, those machines need to agree: either all commit or none do. Two-Phase Commit (2PC) coordinates this. Phase 1: the coordinator asks everyone "are you ready to commit?" Each machine does the work, holds the locks, and says "yes" or "no." Phase 2: if everyone said yes, the coordinator sends the final commit signal. The known flaw: if the coordinator crashes after all the "yes" votes but before sending the final signal, every participant is stuck indefinitely — holding locks with no way to proceed.</p>
     </div>
   </div>
 
@@ -124,35 +124,35 @@
       <div class="step-num">1</div>
       <div>
         <h4>Heartbeats and election timeouts</h4>
-        <p>The Leader sends periodic heartbeat AppendEntries RPCs to all followers. Followers reset their election timer on each heartbeat received. Election timeouts are randomized between 150–300ms to reduce split-vote probability. If a follower's timer expires without a heartbeat, it assumes the leader is dead and starts an election.</p>
+        <p>The leader keeps followers informed by sending periodic heartbeat messages — essentially "I am still alive" pings. Each follower has a countdown timer. Every time a heartbeat arrives, the timer resets. If the timer runs out before the next heartbeat, the follower concludes the leader is gone and starts an election. Timers are randomized (150–300ms) so that two followers do not start elections at the exact same moment, which would split the votes and delay the outcome.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>RequestVote — becoming a candidate</h4>
-        <p>The follower increments its term, transitions to Candidate, votes for itself, and broadcasts RequestVote RPCs. A node grants its vote if: (1) it has not already voted in this term, and (2) the candidate's log is at least as up-to-date as its own (term and index comparison). The "at least as up-to-date" rule ensures a node with stale data cannot become leader.</p>
+        <p>When a follower's timer runs out, it becomes a candidate and asks the other servers to vote for it. A server will vote "yes" only if two conditions are met: it has not already voted in this election round, and the candidate's log is at least as complete as its own. This second condition is crucial — it prevents a server with outdated data from becoming leader and potentially overwriting committed changes with old ones.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Majority quorum and victory</h4>
-        <p>If the Candidate receives votes from a majority (&#8970;n/2&#8971; + 1 nodes), it becomes the new Leader and immediately sends heartbeats to establish authority. For 3 nodes: majority is 2. For 5 nodes: 3. For 7 nodes: 4. Larger clusters tolerate more failures but have higher write latency (more ACKs to wait for).</p>
+        <p>If the candidate collects votes from more than half the cluster, it wins and immediately starts sending heartbeats to assert its leadership. With 3 servers, you need 2 votes. With 5, you need 3. With 7, you need 4. Larger clusters can survive more failures, but also require more ACKs before a write is considered committed — which adds latency. This is why most Raft clusters run with 3 or 5 nodes, not dozens.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Log replication</h4>
-        <p>When a client writes, the leader appends the entry to its log (with the current term), sends AppendEntries RPC to all followers. The entry is "committed" once a majority acknowledges. The leader then applies the entry to its state machine and responds to the client. Followers apply committed entries in order. This guarantees: if any node commits entry N, no node will ever commit a different entry at index N.</p>
+        <p>When a client sends a write to the leader, the leader appends it to its own log and then sends the entry to all followers. Once a majority of servers have written the entry to their logs and confirmed it, the entry is considered committed. The leader applies the change and responds to the client. Followers apply committed entries in the same order. The guarantee: once any server considers entry number N to be committed, no server will ever record a different entry at position N.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">5</div>
       <div>
         <h4>Leader completeness</h4>
-        <p>Raft's key safety property: a leader always has all committed entries. A candidate with a stale log cannot win a majority — nodes with newer logs refuse to vote for it. This prevents a stale node from becoming leader and overwriting committed data with old versions.</p>
+        <p>Raft's core safety rule is that a newly elected leader always has all previously committed entries in its log. This is guaranteed by the voting rule: if a server has a more up-to-date log than the candidate, it refuses to vote for that candidate. So any candidate that wins a majority must already have all committed entries — because the majority of voters that confirmed those entries will refuse to elect anyone who is missing them.</p>
       </div>
     </div>
   </div>
@@ -167,28 +167,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Phase 1: PREPARE</h4>
-        <p>The coordinator (transaction manager) sends PREPARE to all participant shards. Each participant does the work — executes the SQL, acquires locks, writes an undo log entry — then writes a PREPARED record to its durable log and responds YES (can commit) or NO (abort). At this point, participants are in a "limbo" state: they have done the work but have not yet committed. They hold all acquired locks.</p>
+        <p>The coordinator (the server managing the transaction) sends a PREPARE message to every machine involved. Each machine does the actual work — runs the query, acquires locks, and writes a safety record to its journal so the work can be completed later — and then responds YES if it is ready to commit, or NO if something went wrong. After responding YES, each machine is in a waiting state: it has done everything except make the final commitment, and it is holding all its locks.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Phase 2: COMMIT or ABORT</h4>
-        <p>If all participants said YES, the coordinator writes COMMIT to its durable log and sends COMMIT to all participants. Each participant commits its local transaction, releases locks, and ACKs. If any participant said NO (or timed out), the coordinator sends ABORT to all participants, who roll back.</p>
+        <p>Once all participants respond YES, the coordinator writes a COMMIT record to its own journal and sends COMMIT to everyone. Each machine commits its piece of the transaction, releases its locks, and confirms. If even one participant said NO, or if a timeout occurs with no response, the coordinator sends ABORT instead. Every machine rolls back and releases locks. The transaction is canceled as if it never started.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>The blocking problem</h4>
-        <p>If the coordinator crashes after sending PREPARE but before sending COMMIT/ABORT, participants are stuck: they are PREPARED (holding locks, work done) but cannot proceed in either direction without the coordinator's decision. This is a fundamental limitation of 2PC — it is a "blocking" protocol. Recovery: participants must contact the coordinator (or its successor) to learn the outcome. This can take seconds or minutes.</p>
+        <p>Here is the fundamental flaw of 2PC. Imagine the coordinator crashes after collecting all the YES votes but before it can send the COMMIT signal. Every participant is stuck: they have done the work, they are holding their locks, and they cannot decide on their own whether to commit or roll back — they need the coordinator's final word. Until the coordinator recovers (which could take minutes), those locks are held and no other transaction can touch that data. This is called the blocking problem, and it is an inherent limitation of the two-phase design.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Overcoming the blocking problem</h4>
-        <p>Three-Phase Commit (3PC) adds a pre-commit phase to eliminate blocking — but at the cost of more round trips and assumptions about timing. In practice, most systems (Spanner, CockroachDB) use 2PC on top of Paxos/Raft for the coordinator state — if the coordinator fails, its Raft group elects a new leader that can read the coordinator's log and continue. This eliminates the blocking window at the cost of complex failure recovery logic.</p>
+        <p>Three-Phase Commit (3PC) inserts an extra step to break the blocking scenario, but it adds more network round trips and makes assumptions about timing that are hard to guarantee in practice. Real production systems like Spanner and CockroachDB take a different approach: they run the coordinator itself on a Raft group. If the coordinator crashes, the Raft group elects a new leader that can read the coordinator's log and resume exactly where it left off. This effectively eliminates the blocking window, at the cost of more complex failure recovery logic.</p>
       </div>
     </div>
   </div>
@@ -217,21 +217,21 @@
       <div class="step-num">1</div>
       <div>
         <h4>Consistent hashing — virtual nodes</h4>
-        <p>In basic consistent hashing, removing one node moves all its keys to one neighbor, creating a hot spot. Virtual nodes (vnodes) solve this: each physical node gets N positions on the ring (N=150 in Cassandra by default). Keys for a removed node spread across all remaining nodes' vnodes. Adding a node: it claims vnodes from all existing nodes, balancing load. This makes the key distribution approximately uniform even with heterogeneous node capacities.</p>
+        <p>Basic consistent hashing places each machine at one point on a ring. When you remove a machine, all its data moves to the single neighbor clockwise — which can overwhelm that one machine. Virtual nodes (vnodes) fix this: instead of one position per machine, each physical machine gets many positions spread around the ring (Cassandra uses 150 by default). Now when a machine is removed, its data spreads evenly across many machines rather than piling onto one. Adding a machine works the same way: it claims small slices from many neighbors, spreading the impact.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Shard key selection criteria</h4>
-        <p>Good shard key: high cardinality (enough distinct values to spread evenly), low update frequency (changing a shard key requires moving the row), query alignment (most queries filter on the shard key to avoid scatter-gather), no monotonic hot spots (avoid auto-increment IDs — use UUID v4 or time-bucketed IDs like ULID). Common choices: user_id for user-centric apps, tenant_id for multi-tenant SaaS, geographic_region for geo-local reads.</p>
+        <p>Picking the right shard key is the most important design decision in a sharded system. A good shard key has enough distinct values that data spreads evenly — user_id, device_id, or tenant_id are typical good choices. It should rarely change (if the shard key changes, the row has to physically move to a different machine). Most queries should include the shard key, so the database can go directly to one machine rather than asking all of them. The worst choice is an auto-incrementing number — all new rows have the highest value, so all new writes pile onto the same shard. Use random UUIDs or time-bucketed IDs (like ULID) instead.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Cross-shard queries</h4>
-        <p>A query that cannot be answered from a single shard requires scatter-gather: send the query to all shards, collect partial results, merge and sort. Scatter-gather is N times slower than a single-shard query and adds coordination overhead. Design schemas so the most frequent queries are single-shard. Cross-shard transactions (multi-shard writes) require 2PC — expensive. Co-locate related data under the same shard key.</p>
+        <p>If a query cannot be answered from one machine, the database has to send the query to every machine (scatter), collect all their partial results, and merge them into a single answer (gather). This scatter-gather approach is much more expensive — if you have 10 shards, the query now involves 10 machines instead of 1. Cross-shard transactions are even heavier since they require 2PC coordination. The rule of thumb: design your data model so the queries you run most often touch only one shard. Related data that is frequently read together should share the same shard key.</p>
       </div>
     </div>
   </div>
@@ -392,21 +392,21 @@
       <div class="step-num">1</div>
       <div>
         <h4>How CDC works</h4>
-        <p>A CDC connector (Debezium for PostgreSQL/MySQL, AWS DMS, Google Datastream) connects as a replication client and reads the WAL/binlog. For each change event, it emits a structured record with: table name, operation type (INSERT/UPDATE/DELETE), before-image, after-image. These events are published to Kafka, Kinesis, or Pub/Sub for downstream consumers.</p>
+        <p>Instead of repeatedly querying the database to check what changed, CDC (Change Data Capture) reads directly from the database's internal journal — the WAL in PostgreSQL, or the binlog in MySQL. Every time a row is inserted, updated, or deleted, the journal records it. A CDC connector (like Debezium, AWS DMS, or Google Datastream) reads that journal and converts each change into a structured event containing the table name, the type of change, and the before and after values. Those events are published to a message queue like Kafka for other systems to consume.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Use cases</h4>
-        <p>Search index sync (Elasticsearch): whenever a product changes in PostgreSQL, CDC keeps the search index up to date without dual-write logic in the application. Cache invalidation: invalidate Redis entries exactly when the DB row changes. Audit log: stream all changes to an immutable event store. Microservice events: publish domain events derived from DB changes without the dual-write/outbox complexity.</p>
+        <p>CDC is how many real systems stay in sync across multiple data stores. When a product is updated in your database, CDC can automatically update your Elasticsearch search index without you writing any extra code to do so. When a row changes, CDC can tell Redis to invalidate the cached version. It can write every change to an immutable audit log. It can publish domain events to other microservices — replacing the fragile pattern of writing to the database and also publishing to a message queue at the same time (which could get out of sync if either step fails).</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>At-least-once semantics</h4>
-        <p>CDC delivers each change at least once — on restart after a failure, it re-reads from its last checkpoint and may re-deliver events. Consumers must be idempotent: applying the same change event twice should have the same effect as once. Design downstream writes with idempotency keys or conditional updates (INSERT … ON CONFLICT DO NOTHING, UPDATE … WHERE version = ?)</p>
+        <p>CDC connectors guarantee that every change event is delivered at least once. After a restart, the connector picks up from its last saved position and may re-send events it already delivered before the crash. This means the systems receiving those events must be able to handle duplicates gracefully: applying the same event twice should produce the same result as applying it once. This property is called idempotency. In practice, this means using patterns like INSERT … ON CONFLICT DO NOTHING, or conditional updates that only apply if the version number matches what you expect.</p>
       </div>
     </div>
   </div>

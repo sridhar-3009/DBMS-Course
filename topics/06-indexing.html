@@ -27,7 +27,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 06</div>
     <h1>Database <span class="accent">Indexing</span></h1>
-    <p class="subtitle">B+trees, hash indexes, covering indexes, composite key ordering, partial indexes, index selectivity — everything you need to turn 10-second queries into 10-millisecond queries without guessing.</p>
+    <p class="subtitle">Without an index, a database query scans every single row in a table — like searching a phone book by reading every entry. An index is like the alphabetical tabs in that phone book: it lets the database jump directly to the right place. This topic explains how indexes work, when to use them, and why using the wrong one can make things worse.</p>
     <div class="company-badges">
       <span class="badge">PostgreSQL GiST/GIN/BRIN</span><span class="badge">MySQL InnoDB B+tree</span>
       <span class="badge">Redis Sorted Set</span><span class="badge">Elasticsearch</span><span class="badge">MongoDB</span>
@@ -37,11 +37,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>B+tree index</strong> — all data in leaf nodes, linked for range scans. O(log n) point lookup, efficient range queries. Default index type in every major RDBMS.</li>
-      <li><strong>Clustered index</strong> — table rows stored in index key order. Only one per table. Range scans on PK are extremely fast.</li>
-      <li><strong>Covering index</strong> — index includes all columns needed by a query, avoiding any table lookup. The index IS the query result.</li>
-      <li><strong>Composite index</strong> — column order matters. (A, B) helps filter on A alone but not B alone. Leftmost prefix rule.</li>
-      <li>Indexes speed reads but slow writes — every INSERT/UPDATE/DELETE must maintain every index on the table. Index deliberately, not liberally.</li>
+      <li><strong>B+tree index</strong> — the default type. Think of it as a sorted alphabetical list that stays balanced no matter how many entries are added. Looking up one value, a range, or a sort order are all fast. Used for almost all everyday queries.</li>
+      <li><strong>Clustered index</strong> — the physical rows on disk are arranged in the same order as this index. In MySQL/InnoDB, the primary key is always the clustered index. One per table. Range scans by primary key are extremely fast because the rows are stored together.</li>
+      <li><strong>Covering index</strong> — an index that already contains every column your query needs. The database never has to touch the actual table rows — it gets everything from the index. This is like answering a question from the index at the back of a book without having to flip back to the chapter.</li>
+      <li><strong>Composite index</strong> — an index on multiple columns together. The order matters: (dept, hire_date) helps you filter by dept (or by dept AND hire_date), but not by hire_date alone. Always put the column you filter on most often first.</li>
+      <li><strong>Indexes make reads faster but writes slower.</strong> Every insert, update, or delete must update every index on the table. A table with 10 indexes pays 10x the write cost. Add indexes purposefully after measuring, not speculatively.</li>
     </ul>
   </div>
 
@@ -54,22 +54,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>B+Tree (default)</h4>
-      <p>Sorted balanced tree. Handles equality, range, ORDER BY, LIKE 'prefix%'. O(log n) lookup. Leaf nodes doubly linked for range scans. Works on any comparable data type.</p>
+      <p>The most common index type. Imagine a very tall, well-organized filing cabinet that always stays balanced — no matter how many files you add or remove. Looking up a specific value is fast because you just navigate the tree top-to-bottom (typically 3–4 hops for millions of rows). Range queries (like "all orders between January and March") are also fast because the leaf level is sorted and linked together. Works for almost everything: equality checks, ranges, sorting, and prefix text searches like LIKE 'john%'.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Hash</h4>
-      <p>Hash table stored on disk. O(1) equality lookup, smaller than B+tree, no range support. Use for exact-match only columns (UUIDs, token lookups). MySQL InnoDB builds hash indexes in-memory adaptively.</p>
+      <p>A hash index works like a locker room: you hand over a key (your value), it instantly gives you the locker number (the row). Single lookups are very fast — but only for exact equality matches. You cannot ask "which lockers are between 50 and 100" — there is no ordering. Use hash indexes only when you need exact equality lookups on things like tokens or UUIDs and never need to search a range.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>GIN (Inverted)</h4>
-      <p>Maps element values to rows containing them. Ideal for JSONB containment, arrays, full-text search. Slower to build/update than B+tree but extremely fast for multi-element containment queries.</p>
+      <p>GIN (Generalized Inverted Index) is built for searching inside complex data like JSON, arrays, or text documents. Think of it like the index at the back of a book — it maps individual words or elements to which pages (rows) they appear in. If you store product metadata as JSON and want to find all products where color is "red," a GIN index can scan that in milliseconds. It takes longer to build and update than a B+tree, but it handles things a B+tree simply cannot.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>BRIN (Block Range)</h4>
-      <p>Stores min/max of a column per disk block range. Tiny size (kilobytes for billion-row tables). Only useful for naturally ordered columns like timestamps or auto-increment IDs. Cannot handle random values.</p>
+      <p>BRIN (Block Range Index) is an extremely small index — just a few kilobytes even for tables with billions of rows. It works by recording the minimum and maximum value for each physical section of the table on disk. If you query for a date range, it can quickly rule out sections of the table that fall outside your range without reading them. This only works if the column is naturally ordered on disk — like an auto-incrementing ID or timestamps in an append-only log table. It is useless for randomly ordered data like UUIDs.</p>
     </div>
   </div>
 
@@ -83,35 +83,35 @@
       <div class="step-num">1</div>
       <div>
         <h4>Node structure and fan-out</h4>
-        <p>Each tree node corresponds to a disk page (typically 8–16KB). Internal nodes store up to N keys and N+1 child pointers, where N is determined by the page size and key width. With 8KB pages and 8-byte integer keys, a node can hold ~500 keys. This gives a fan-out of ~500, meaning the tree has depth log_500(rows) — about 3–4 levels for tens of millions of rows. The high fan-out is why B+trees beat binary search trees for on-disk structures.</p>
+        <p>Think of the B+tree as a building directory. Each floor (level) has multiple offices (nodes), and each office has multiple doors pointing to the next floor down. The number of doors per office is called the fan-out — in a database, it is typically 100 to 500. Because each level branches that many ways, the tree stays shallow even for enormous tables: a tree with a fan-out of 500 can index 125 million rows in just three levels. This is why looking up a row takes only 3–4 disk reads regardless of table size.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Point lookup (exact match)</h4>
-        <p>Start at the root. At each internal node, binary search the key array to find which child pointer to follow. Descend until reaching the leaf. Total I/O: one read per level (3–4 disk reads). With OS page cache, the root and upper levels are typically in memory — only the leaf page requires a physical I/O.</p>
+        <p>To find a specific value — like looking up a user by ID — the database starts at the top of the tree and follows pointers down toward the matching leaf. At each level, it checks which direction to go (left for smaller, right for larger). By the time it reaches the bottom (the leaf level), it has the exact row location. The whole journey is only 3–4 steps for most tables. The top levels of the tree are usually cached in memory, so often only the final step reads from disk.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Range scan</h4>
-        <p>Find the leaf containing the range start via point lookup. Then scan right through the doubly-linked leaf node list until the range end is exceeded. I/O is proportional to result set size, not table size — this is why B+trees are dramatically better than hash indexes for range queries.</p>
+        <p>For a range query — like "all orders placed in January" — the database first finds the leaf where January starts (a normal point lookup), then walks forward through the sorted leaf level reading the next entry, and the next, until the range is exhausted. The leaf nodes are linked together like a chain, so this is very efficient. The amount of work is proportional to how many rows match, not the total size of the table. This is why range queries are fast with a B+tree but impossible with a hash index.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Insert and rebalancing</h4>
-        <p>New keys are inserted into the correct leaf position. If the leaf is full, it is split: the median key is promoted to the parent, and the overflow is distributed. If the parent is also full, the split propagates upward. In practice, splits are rare because pages are large and the fill factor is typically 90% (10% free space for future inserts). Deletes leave pages with gaps — the fill factor is not immediately restored.</p>
+        <p>When a new row is inserted, the database finds the right leaf position in the tree and adds the new key there. If the leaf is full, it splits in two: the middle key moves up to the parent level, and the entries are divided between the two new leaves. If the parent is also full, the split ripples upward. In practice, splits are uncommon because each node has reserved some empty space (typically 10%) to absorb new entries without immediately splitting. Deletes leave small gaps, and the tree is not immediately reorganized.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">5</div>
       <div>
         <h4>Index fill factor and bloat</h4>
-        <p>Over time, repeated deletes cause B+tree pages to become under-filled ("index bloat"). A half-empty 8KB page still costs a full I/O to read. PostgreSQL's <code>REINDEX</code> or <code>VACUUM FULL</code> rebuilds the index compactly. MySQL's <code>OPTIMIZE TABLE</code> does the same. Monitor with <code>pgstatindex()</code> in PostgreSQL — <code>avg_leaf_density</code> below 50% indicates significant bloat.</p>
+        <p>Over time, lots of deletes can leave index pages half-empty — a problem called index bloat. A half-empty page still takes the same amount of time to read as a full one, so bloat means you are doing extra work for no benefit. To clean this up, you can rebuild the index from scratch (REINDEX in PostgreSQL, OPTIMIZE TABLE in MySQL). On a busy production table this matters — a table with high delete rates (like a job queue or audit log) should have its index bloat monitored and periodically cleaned up.</p>
       </div>
     </div>
   </div>
@@ -150,28 +150,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Leftmost prefix rule</h4>
-        <p>Index (dept, hire_date, salary) supports queries that filter on (dept), (dept, hire_date), or (dept, hire_date, salary) — always using the leftmost columns first. It does NOT support queries that filter only on hire_date or salary without dept. The index is sorted by dept first, so skipping dept means the rest of the index is in no useful order for hire_date alone.</p>
+        <p>An index on (dept, hire_date, salary) is sorted first by department, then by hire date within each department, then by salary within each hire date. You can only use it efficiently if you are filtering by the columns from the left. So filtering by dept works. Filtering by dept AND hire_date works. But filtering by hire_date alone does not — the index is not sorted by hire_date globally, only within each department. Think of it like a phone book sorted by last name, then first name: you can find all "Smiths" quickly, but you cannot find all "Johns" without reading the whole thing.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Equality columns before range columns</h4>
-        <p>Place equality predicates (dept = 'Eng') before range predicates (hire_date > '2020'). Equality on the first column narrows to a tight key range; the range predicate then scans forward within that range. Reversing the order (hire_date, dept) would require scanning all hire_dates and checking dept — far less selective.</p>
+        <p>When designing a composite index, put columns used in exact-match filters before columns used in range filters. For example: if you always filter by dept = 'Engineering' AND hire_date between two dates, put dept first. The exact match on dept narrows the search to one section of the index, then the range scan on hire_date within that section is small. If you reversed it (hire_date first), the range would span all hire dates across all departments — a much bigger search.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>ORDER BY and GROUP BY with indexes</h4>
-        <p>If your query has <code>ORDER BY dept, hire_date</code> and an index on (dept, hire_date), the DB can read the index in order and return rows already sorted — no sort step needed. This is called an "index scan" for ordering. The optimizer will use this only if it believes the index scan is cheaper than a full-scan + in-memory sort, which depends on result set size and available memory.</p>
+        <p>If your query sorts by the same columns that are in an index (in the same order), the database can read the index in sorted order and skip the sorting step entirely. For example, if you have an index on (dept, hire_date) and your query says ORDER BY dept, hire_date — the results come out already sorted as the database traverses the index. This can be a big win because sorting is expensive when it requires loading a lot of rows into memory.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Index skip scan</h4>
-        <p>Modern databases (PostgreSQL 14+ via loose index scan, Oracle, MySQL 8+) can sometimes skip the leading column of a composite index if the leading column has low cardinality. For an index on (status, created_at) with 3 distinct statuses, a query on created_at alone can scan the index three times — once per status value — instead of doing a full table scan.</p>
+        <p>Modern databases have a trick: if the first column of a composite index only has a few distinct values (like a status column with "pending," "active," "closed"), they can scan the index multiple times — once per value — to answer a query that only filters on the second column. This "skip scan" avoids a full table scan when a full composite match is not available. It works best when the first column has very few distinct values; if there are thousands of distinct values, the trick becomes more expensive than just scanning the whole table.</p>
       </div>
     </div>
   </div>
@@ -186,21 +186,21 @@
       <div class="step-num">1</div>
       <div>
         <h4>Traditional covering vs. INCLUDE</h4>
-        <p>You can cover a query by including extra columns in the indexed key: <code>CREATE INDEX ON employees (dept, hire_date, salary)</code>. But salary being in the key means the index is sorted by (dept, hire_date, salary), adding overhead to insert/update ordering. PostgreSQL's <code>INCLUDE (salary)</code> stores salary in the leaf pages but not in the key — it is "along for the ride," available when found, but not used for sorting or navigation.</p>
+        <p>To make a covering index, you add extra columns to the index so the query never has to touch the actual table. One way is to put those columns directly in the index key — but that changes the sort order and can add overhead to every write. PostgreSQL offers a cleaner option: INCLUDE. Columns in INCLUDE are stored in the leaf pages (so a query can read them without going back to the table) but they do not affect the sort order of the index. Think of them as passengers in the index — they are there when needed but do not drive.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Index-only scan</h4>
-        <p>When a covering index exists, PostgreSQL uses an "Index Only Scan" — visible in EXPLAIN as <code>Index Only Scan using idx_name</code>. It still checks the visibility map to ensure no heap fetches are needed for MVCC visibility. Run <code>VACUUM</code> regularly so the visibility map is current and index-only scans can fully avoid heap access.</p>
+        <p>When a covering index exists, the database can answer the entire query from the index without ever reading the original table rows. In EXPLAIN output, you will see "Index Only Scan" — this is the fastest possible outcome. The database does need to do a quick side check to confirm that all the rows in the index are visible to your transaction (because of MVCC), but running VACUUM regularly keeps that check cheap. An index-only scan is often 10x faster than even a normal index scan.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>When to use INCLUDE</h4>
-        <p>Use INCLUDE when: a query frequently filters on (A, B) and always fetches column C. Adding C to INCLUDE makes the index covering for that query without changing sort order. Common pattern: <code>CREATE INDEX ON orders (user_id, created_at) INCLUDE (status, total)</code> to serve dashboards that query orders by user and sort by date, then display status and total.</p>
+        <p>Use INCLUDE when a query always filters on certain columns AND always reads a few extra columns. For example, if your dashboard always queries orders by user and date, and always needs to display the status and total, add status and total with INCLUDE. This makes the index covering for that specific query. The index key stays clean (just user_id and created_at), but the leaf nodes carry status and total along so no table lookup is needed.</p>
       </div>
     </div>
   </div>
@@ -214,21 +214,21 @@
       <div class="step-num">1</div>
       <div>
         <h4>Partial indexes</h4>
-        <p>A partial index includes only rows satisfying a WHERE predicate. <code>CREATE INDEX ON jobs (priority) WHERE status = 'pending'</code> — only pending jobs are indexed. This index is much smaller (perhaps 1% the size of a full index), faster to scan, and always highly selective. Any query that includes <code>WHERE status = 'pending'</code> in its filter can use this index.</p>
+        <p>A partial index is an index on a subset of rows — only rows where a condition is true. For example, if a jobs table has millions of completed jobs but only a few thousand pending ones, you can create an index that only covers the pending ones. This index is tiny, always selective, and very fast to scan. Any query that filters on pending jobs can use it. The key insight: you index only what you actually query frequently, not the whole table.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Expression (functional) indexes</h4>
-        <p><code>CREATE INDEX ON users (LOWER(email))</code> — indexes the result of an expression, not the column value directly. Queries must use the same expression in their WHERE clause for the index to be used: <code>WHERE LOWER(email) = 'alice@example.com'</code>. Without this, <code>WHERE LOWER(email) = ?</code> on a plain index on email is a full table scan every time.</p>
+        <p>Sometimes you need to search by a transformed version of a column — like searching email addresses case-insensitively. If you store emails in mixed case and always query with LOWER(email) = '...', a regular index on email will not help — the index stores the original case, but your search uses the lowercase version. An expression index solves this: instead of indexing the raw column, you index the result of LOWER(email). Then queries that use LOWER(email) in their filter can use that index.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Unique partial indexes</h4>
-        <p>Enforce uniqueness only within a subset of rows: <code>CREATE UNIQUE INDEX ON users (email) WHERE deleted_at IS NULL</code>. This allows multiple rows with the same email as long as only one is undeleted — a common pattern for soft-delete tables. Standard UNIQUE constraints would prevent even soft-deleted duplicates.</p>
+        <p>You can combine partial indexes with a uniqueness constraint. For example, if you soft-delete users (keeping old records with a deleted_at timestamp), you want to enforce that no two active users share the same email — but it is fine if a deleted user's email is reused later. A unique partial index on email WHERE deleted_at IS NULL enforces uniqueness only among active rows. A regular UNIQUE constraint would reject the reuse entirely, even for deleted accounts.</p>
       </div>
     </div>
   </div>

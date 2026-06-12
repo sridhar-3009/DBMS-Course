@@ -26,7 +26,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 12</div>
     <h1>DBMS <span class="accent">Interview Guide</span></h1>
-    <p class="subtitle">Schema design patterns, system design Q&amp;A, common gotchas, and a drag-and-drop schema builder to practice design questions before your interview.</p>
+    <p class="subtitle">When a company asks you to "design a database for X," they are not looking for a perfect answer. They want to see how you think: do you ask the right questions first, can you reason about trade-offs, do you understand why one design beats another? This guide walks through the interview playbook and seven classic design examples — so you arrive with a framework, not just facts.</p>
     <div class="company-badges">
       <span class="badge">Google</span><span class="badge">Meta</span><span class="badge">Amazon</span>
       <span class="badge">Microsoft</span><span class="badge">Stripe</span><span class="badge">Airbnb</span>
@@ -38,22 +38,22 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Clarify First</h4>
-      <p>Before designing: ask read/write ratio, scale (QPS, data volume), consistency requirements, latency SLA, and whether schema is fixed or flexible. Every design decision flows from these answers.</p>
+      <p>Before drawing a single table, ask questions. How many requests per second? Is this mostly reads or writes? Can users sometimes see stale data, or does it always need to be current? How fast must queries respond? Will the schema change often? Every design decision — which indexes to add, whether to use a cache, when to shard — flows directly from these answers. Designing before clarifying is how you waste your interview time building the wrong thing.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Start Normalized</h4>
-      <p>Begin with 3NF — show the clean relational model. Then discuss denormalization trade-offs based on stated access patterns. Never start with a denormalized schema; start clean and justify each deviation.</p>
+      <p>Start with a clean, normalized design — one fact in one place, no duplication, foreign keys connecting tables properly. This shows you understand the fundamentals. Then, once you have that baseline, talk about where you might deliberately break the rules: "for the feed, I would denormalize the author name into the post row to avoid a JOIN on every read." Always start clean and justify each deviation. Never start with a messy schema and try to explain it after.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Scale Progression</h4>
-      <p>Indexing strategy first. Then read replicas. Then sharding (which key, range vs hash). Then caching layer (Redis). Show the scaling progression explicitly — interviewers want to see incremental reasoning.</p>
+      <p>Do not jump straight to "we need to shard it." Walk through the progression: first add indexes so queries are fast. Then add read replicas so reads can scale horizontally. Then consider a cache like Redis to absorb the most frequent lookups. Only after those approaches reach their limits do you reach for sharding — and when you do, be specific about which column to shard on and why. Interviewers want to see that you scale incrementally, not that you over-engineer from the start.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Name the Trade-offs</h4>
-      <p>Every design choice has a cost. Denormalization causes update anomalies. Eventual consistency allows stale reads. More indexes slow writes. Interviewers explicitly want to hear trade-offs stated out loud.</p>
+      <p>Every design choice has a cost, and interviewers are listening for you to name it. If you add a cache: "reads get faster, but now writes need to invalidate the cache — there is a short window where the cache is stale." If you denormalize: "reads are faster, but now an update to the author's name requires updating every copy." If you use eventual consistency: "the system stays available during a network failure, but users might briefly see old data." Stating trade-offs shows maturity. Pretending there are none sounds naive.</p>
     </div>
   </div>
 
@@ -64,49 +64,49 @@
       <div class="step-num">1</div>
       <div>
         <h4>URL Shortener Schema</h4>
-        <p>Core table: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">links(id BIGINT PK, short_code VARCHAR(8) UNIQUE, original_url TEXT, user_id FK, created_at, expires_at, click_count)</code>. Bottleneck: read-heavy (300:1 read/write). Add Redis cache on short_code &rarr; original_url. Shard by hash(short_code). Click counting: batch writes or Redis INCR to avoid hot-row contention. Short code generation: base62(auto_increment) or collision-checked random hash.</p>
+        <p>The core table is: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">links(id BIGINT PK, short_code VARCHAR(8) UNIQUE, original_url TEXT, user_id FK, created_at, expires_at, click_count)</code>. The key insight: every person who clicks a short link is a read, but only the person who created the link was a write. The read-to-write ratio is roughly 300:1. The bottleneck is read throughput. The fix is a Redis cache keyed on short_code — 99% of redirects never touch the database at all. For click counting, avoid updating the same row thousands of times per second; use Redis INCR and flush to the database in batches. Short code generation: either base62 encode an auto-increment ID, or generate a random hash and check for collisions on insert.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Social Media Feed Schema</h4>
-        <p>Posts table + Follows table. Fan-out options: pull model (query all followed users' posts on load — slow for high-follow accounts), push model (write to each follower's feed on post — expensive for celebrities with millions of followers). Hybrid: push for normal users, pull for influencers. Denormalize post author data into the feed table for single-query reads. Shard feed by user_id.</p>
+        <p>You need a Posts table, a Users table, and a Follows table. The tricky question is: how does your feed get assembled? Pull model: when you open the app, query all the posts from everyone you follow and sort them. Simple, but if you follow 5000 people this query is expensive. Push model: when someone posts, immediately write a copy to every follower's feed table. Reading the feed is instant — just look up your own feed rows. But if a celebrity with 10 million followers posts, that is 10 million writes. The hybrid approach: push for normal users, pull for celebrities. Shard the feed table by user_id so each user's feed lives on one machine.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>E-commerce Inventory Schema</h4>
-        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">products(id, name, price)</code> + <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">inventory(product_id, warehouse_id, quantity)</code>. Inventory decrements need <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">FOR UPDATE</code> + optimistic locking to prevent overselling. Separate reservations table for cart items. Eventual decrement after payment confirmation. Prevent negative inventory with <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">CHECK (quantity &gt;= 0)</code>.</p>
+        <p>You need <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">products(id, name, price)</code> and <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">inventory(product_id, warehouse_id, quantity)</code>. The hard problem is overselling: two people buy the last item simultaneously and both get a confirmation. You prevent this with row-level locking (<code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">SELECT ... FOR UPDATE</code>) so only one transaction can decrement at a time, plus a <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">CHECK (quantity >= 0)</code> constraint to block any update that would go negative. For items sitting in a shopping cart, use a separate reservations table with an expiry — the item is held for 10 minutes; if payment does not complete, it goes back into available inventory.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Chat Application Schema</h4>
-        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">conversations(id, created_at)</code> + <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">messages(id, conv_id FK, sender_id FK, content, sent_at INDEX)</code>. Shard by conversation_id — all messages in a conversation stay together on one shard for fast retrieval. Partition messages table by month for time-range queries. For ordering guarantees: sent_at + UUID as composite sort key (clock skew resistant).</p>
+        <p>The core tables are: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">conversations(id, created_at)</code> and <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">messages(id, conv_id FK, sender_id FK, content, sent_at)</code>. The key insight for sharding is that when you load a conversation, you want all its messages on the same machine — so shard on conversation_id. Ordering matters: messages must appear in the order they were sent. Do not rely on sent_at alone — two messages sent within the same millisecond on different servers could have identical timestamps. Use a composite sort key of sent_at plus a UUID. Partition the messages table by month so old messages live in separate, smaller partitions that rarely need to be touched.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">5</div>
       <div>
         <h4>Ride-sharing Schema</h4>
-        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">drivers(id, status, location)</code>, <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">rides(id, driver_id, rider_id, status, pickup, dropoff, price)</code>. Geospatial index (PostGIS, H3 hexagons) for nearby driver queries. Hot spot on status='available' filter — partial index. Real-time location: separate Redis geo hash, not in the RDBMS (too many writes, RDBMS cannot keep up).</p>
+        <p>You need <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">drivers(id, status, location)</code> and <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">rides(id, driver_id, rider_id, status, pickup, dropoff, price)</code>. The interesting problem is "find drivers near me." You cannot use a standard index for this — you need a geospatial index (PostGIS in PostgreSQL, or a hexagonal grid system like H3) that knows how to answer "within 2km of this coordinate." Do not store real-time driver locations in the relational database — a driver pings their location every few seconds, and at scale that is millions of writes per minute. Store live locations in Redis (which has a built-in geospatial data structure), and only write to the database when a ride is booked.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">6</div>
       <div>
         <h4>Hotel/Flight Booking Schema</h4>
-        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">rooms(id, hotel_id, type, base_price)</code> + <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">bookings(id, room_id, user_id, check_in, check_out, status)</code>. Availability query: find rooms with no overlapping booking. Index on (room_id, check_in, check_out). Use <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">SELECT ... FOR UPDATE</code> to prevent double-booking. Rate limiting at the application layer to prevent seat fights. Two-phase commit if inventory is distributed across services.</p>
+        <p>The tables are: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">rooms(id, hotel_id, type, base_price)</code> and <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">bookings(id, room_id, user_id, check_in, check_out, status)</code>. The hardest query is "which rooms are available for these dates?" — you need to find rooms that have no existing booking that overlaps your requested window. Index on (room_id, check_in, check_out) to make this fast. To prevent two people from booking the same room at the same time, lock the room's booking rows with <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">SELECT ... FOR UPDATE</code> before inserting. PostgreSQL even supports exclusion constraints on date ranges that will reject overlapping bookings at the database level.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">7</div>
       <div>
         <h4>Payment / Transaction Ledger Schema</h4>
-        <p>Immutable ledger: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">transactions(id, from_account_id, to_account_id, amount, created_at, idempotency_key UNIQUE)</code>. Never UPDATE or DELETE ledger rows — insert only. Balance computed as SUM of credits minus debits, or materialized as a separate <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">account_balances</code> table updated atomically. Idempotency key prevents duplicate charges on retry. Separate <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">payment_intents</code> table tracks in-flight payment state machine.</p>
+        <p>The key design decision: never update or delete financial records. Use an append-only (immutable) ledger: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">transactions(id, from_account_id, to_account_id, amount, created_at, idempotency_key UNIQUE)</code>. Every row is a permanent record of something that happened. A balance is the sum of all credits minus all debits for an account — or a pre-computed total in a separate balance table updated atomically alongside each insert. The idempotency_key is critical: if the network drops during a payment and the client retries, the UNIQUE constraint on idempotency_key ensures the charge only goes through once. A separate payment_intents table tracks where a payment is in its multi-step lifecycle (created, authorized, captured, refunded).</p>
       </div>
     </div>
   </div>
@@ -156,11 +156,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>Always clarify first</strong> — read/write ratio, scale, consistency requirements, latency SLA, and access patterns before designing.</li>
-      <li><strong>Start normalized</strong> — 3NF first, then denormalize based on stated access patterns with explicit trade-off discussion.</li>
-      <li><strong>Scale progression</strong> — indexes first, then read replicas, then sharding, then caching layer.</li>
-      <li><strong>Name trade-offs</strong> — denormalization causes update anomalies; eventual consistency allows stale reads; more indexes slow writes.</li>
-      <li><strong>Idempotency keys</strong> — essential for payment and reservation APIs to handle retries safely without duplicate side effects.</li>
+      <li><strong>Always clarify first</strong> — before touching the schema, ask about read/write ratio, scale, whether users can tolerate stale data, latency requirements, and what the top three queries are. A five-minute conversation here saves you from building the wrong thing for forty minutes.</li>
+      <li><strong>Start normalized</strong> — show the clean, 3NF version first so the interviewer sees you understand the fundamentals. Then explain each place you deliberately break the rules — and why the access pattern justifies it.</li>
+      <li><strong>Scale progression</strong> — add indexes first, then read replicas, then a cache, then sharding. Walk through each step rather than jumping straight to "we should shard it."</li>
+      <li><strong>Name trade-offs</strong> — denormalizing makes reads faster but means updates touch more rows. A cache makes reads cheaper but can briefly return stale data. More indexes speed up reads but slow down every write. Interviewers listen for this kind of two-sided thinking.</li>
+      <li><strong>Idempotency keys</strong> — when a payment or booking request times out, the client will retry. An idempotency key (a unique token the client sends with the request, stored in the database) ensures the same request applied twice produces the same result as applying it once — no duplicate charges, no double bookings.</li>
     </ul>
   </div>
 

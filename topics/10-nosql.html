@@ -26,7 +26,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 10</div>
     <h1>NoSQL <span class="accent">Databases</span></h1>
-    <p class="subtitle">Document, key-value, column-family, and graph stores — CAP theorem, eventual consistency, and when to reach for NoSQL over relational databases.</p>
+    <p class="subtitle">Not every problem fits neatly into tables and rows. Sometimes your data looks more like a JSON blob, a social graph, or a time-series of sensor readings. NoSQL databases are purpose-built for these shapes. This topic explains what they trade away from relational databases, and what they gain in return.</p>
     <div class="company-badges">
       <span class="badge">MongoDB</span><span class="badge">Cassandra</span><span class="badge">Redis</span>
       <span class="badge">DynamoDB</span><span class="badge">Couchbase</span><span class="badge">Neo4j</span>
@@ -36,11 +36,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>CAP theorem</strong>a distributed system can guarantee at most 2 of: Consistency, Availability, Partition tolerance.</li>
-      <li><strong>Document DB</strong> (MongoDB): flexible schema, nested documents. Good for variable-structure data.</li>
-      <li><strong>Wide-column DB</strong> (Cassandra): optimized for high-write, time-series workloads. No joins.</li>
-      <li><strong>Key-value DB</strong> (Redis, DynamoDB): simplest data model, fastest reads, limited query power.</li>
-      <li><strong>Graph DB</strong> (Neo4j): native relationship traversal. Best for social graphs, recommendation engines.</li>
+      <li><strong>CAP theorem</strong> — when a distributed system's network breaks, you have to choose: do you keep returning answers (even if slightly stale), or do you go silent until you can guarantee correctness? You cannot do both. This fundamental constraint is called the CAP theorem.</li>
+      <li><strong>Document DB</strong> (MongoDB) — stores data as JSON-like objects. Instead of splitting data across multiple tables, you pack related information into one document. Great for things like a user profile with settings, addresses, and preferences all bundled together.</li>
+      <li><strong>Wide-column DB</strong> (Cassandra) — designed to absorb enormous numbers of writes without slowing down. Think millions of sensor readings per second or event logs from millions of devices. No JOINs; data modeling is driven entirely by query patterns.</li>
+      <li><strong>Key-value DB</strong> (Redis, DynamoDB) — the simplest model: you look things up by a key, like a dictionary. Extremely fast, but you can only find data if you know the exact key. Used heavily for caching, sessions, and leaderboards.</li>
+      <li><strong>Graph DB</strong> (Neo4j) — stores data as nodes (things) and edges (relationships between things). When you need to ask "who are the friends of my friends?" or "what is the shortest path between two people?", a graph database handles this far better than a table with JOINs.</li>
     </ul>
   </div>
 
@@ -49,32 +49,32 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>CAP Theorem</h4>
-      <p>In a distributed system, you can guarantee at most 2 of 3: Consistency (all nodes see same data), Availability (every request gets a response), Partition Tolerance (system works despite network splits).</p>
+      <p>Imagine a database spread across two data centers. The network cable between them gets cut. Now what? If you want both sides to agree on the latest data (Consistency), you have to stop accepting new requests until the connection is restored. If you want both sides to keep serving requests (Availability), you accept that they might disagree on some values. You cannot have both at once during a network split. This trade-off is the CAP theorem: when the network fails, choose between Consistency and Availability. Partition Tolerance (staying up despite the split) is non-negotiable for any distributed system.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Document Store</h4>
-      <p>Store JSON/BSON documents with flexible schema. No JOIN needed — embed related data. Great for hierarchical data, user profiles, catalogs. MongoDB, Couchbase, Firestore.</p>
+      <p>Think of a document store like a folder of JSON files. Each document can have a different structure — one user might have three email addresses, another might have none. There is no rigid schema forcing every row to look identical. Related data is usually embedded directly inside the document rather than spread across separate tables. This makes reads fast (one fetch gets everything) but makes queries across documents more limited. Used by MongoDB, Couchbase, and Firestore.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Wide-Column Store</h4>
-      <p>Rows identified by a key; columns can differ per row. Column families stored together on disk — efficient for reading specific columns across many rows. Cassandra, HBase, Bigtable.</p>
+      <p>A wide-column store is like a spreadsheet where different rows can have completely different columns. Data is organized by a row key, and within each row, you can store as many or as few named columns as you want. Columns that belong together are grouped into column families and stored physically close on disk, making it efficient to read just a specific set of columns across millions of rows. This design is a natural fit for time-series data: each device ID is the row key, and each timestamp becomes a column. Used by Cassandra, HBase, and Google Bigtable.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Eventual Consistency</h4>
-      <p>Updates propagate asynchronously across replicas. All replicas will converge to the same value — eventually. Trades immediate consistency for availability and partition tolerance.</p>
+      <p>When you update a row in a database that has copies in multiple data centers, those copies do not all update at the exact same instant. For a brief window, different data centers may return different values for the same piece of data. Eventually, all copies will converge to the same value. This is called eventual consistency. It lets the database remain fast and available even across geographic distance. The tradeoff: if you read immediately after a write, you might get the old value. For things like social media likes or view counts, this is fine. For a bank balance, it is not.</p>
     </div>
   </div>
 
   <div class="section-label">How It Works</div>
   <h2 class="section-title">CAP Theorem Trade-offs</h2>
   <div class="steps">
-    <div class="step-item"><div class="step-num">C</div><div><h4>Consistency</h4><p>Every read gets the most recent write. Requires synchronous replication or consensus before acknowledging writes. Examples: traditional RDBMS in single-node, Zookeeper, HBase.</p></div></div>
-    <div class="step-item"><div class="step-num">A</div><div><h4>Availability</h4><p>Every request receives a response (success or failure) even during failures. No guarantee the response is the latest data. CouchDB, Cassandra (tunable), DynamoDB.</p></div></div>
-    <div class="step-item"><div class="step-num">P</div><div><h4>Partition Tolerance</h4><p>System continues operating when network partitions split nodes. ALL distributed systems MUST tolerate partitions — P is not really a choice. Real choice: C vs A when partitioned.</p></div></div>
-    <div class="step-item"><div class="step-num">+</div><div><h4>PACELC Extension</h4><p>When no partition (normal operation): choose between Latency and Consistency. DynamoDB: PA/EL. Spanner: PC/EC. This is more realistic than CAP for day-to-day tradeoffs.</p></div></div>
+    <div class="step-item"><div class="step-num">C</div><div><h4>Consistency</h4><p>Every read returns the most recent write. To achieve this, the database must confirm that all replicas have the update before responding. This means waiting for network round trips, which adds latency. If the network is broken, the database may have to refuse requests entirely rather than risk returning stale data. Examples: PostgreSQL running on a single node, ZooKeeper, HBase.</p></div></div>
+    <div class="step-item"><div class="step-num">A</div><div><h4>Availability</h4><p>Every request gets a response, even during failures. The database never says "I am unavailable." The tradeoff is that the response might not reflect the very latest write — a replica that has not yet received the update might serve the old value. The system stays up and responsive, but correctness is slightly relaxed. Examples: CouchDB, Cassandra (at low consistency settings), DynamoDB.</p></div></div>
+    <div class="step-item"><div class="step-num">P</div><div><h4>Partition Tolerance</h4><p>Network partitions — where some servers can no longer communicate with others — are inevitable in any real distributed system. Partition tolerance means the system keeps working despite this. Because partitions cannot be prevented, every distributed database must be partition tolerant. The real choice, then, is not C vs A vs P — it is: when a partition happens, which do you sacrifice: Consistency or Availability?</p></div></div>
+    <div class="step-item"><div class="step-num">+</div><div><h4>PACELC Extension</h4><p>CAP only describes behavior during a network failure. The PACELC model adds what happens during normal operation: even when there is no partition, you still choose between Latency (respond fast, possibly stale) and Consistency (respond correctly, but slower). DynamoDB optimizes for low latency in normal operation. Google Spanner optimizes for consistency in all cases. This extended view is more useful for everyday database selection than CAP alone.</p></div></div>
   </div>
 
   <div class="table-wrap">
@@ -123,28 +123,28 @@
       <div class="step-num">1</div>
       <div>
         <h4>Partition key</h4>
-        <p>Determines which node(s) store the row. All rows with the same partition key are stored together on the same node (and its replicas). Queries that include the full partition key go to exactly one node — efficient. Queries without the partition key must scatter to all nodes — expensive. Choose a partition key with high cardinality and even distribution: user_id, tenant_id, device_id. Avoid: status, date alone, any low-cardinality field.</p>
+        <p>In Cassandra, the partition key decides which physical server stores your data. Think of it as the address on a letter: all rows with the same partition key land on the same machine and its replicas. A query that includes the partition key goes straight to that one machine — fast and efficient. A query without it must ask every machine in the cluster — slow and expensive. Good partition keys have many distinct values that are spread evenly: user_id, device_id, or tenant_id. Bad choices are things like status (only a handful of values) or date alone (all writes for today pile onto one server).</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Clustering key</h4>
-        <p>Within a partition, rows are sorted by the clustering key. This enables efficient range queries within a partition: <code>WHERE user_id = 42 AND event_time &gt; '2024-01-01'</code> — efficient because rows are sorted by event_time within the user_id partition. Compound partition keys can model time-bucketed data: <code>PRIMARY KEY ((user_id, month), event_time)</code> — rows for one user in one month are co-located and sorted by time.</p>
+        <p>Once the partition key routes you to the right server, the clustering key determines the sort order of rows within that partition. This is what makes range queries fast inside a partition. For example, if your partition key is user_id and your clustering key is event_time, then <code>WHERE user_id = 42 AND event_time &gt; '2024-01-01'</code> goes straight to user 42's partition and scans forward in time order — no random searching needed. You can also use a compound partition key like <code>(user_id, month)</code> to prevent any single partition from growing too large over time.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>Denormalization is required</h4>
-        <p>Cassandra has no JOINs. If you need to query by two different access patterns (e.g., "get orders by user_id" AND "get orders by order_status"), you must maintain two separate tables — one optimized for each query. Write to both tables at application level or using materialized views. This is explicit denormalization driven by query requirements, not convenience.</p>
+        <p>Cassandra has no JOINs. If you need to look up the same data two different ways — for example, "get orders by user" AND "get orders by status" — you must store it in two separate tables, each optimized for one access pattern. Your application writes to both tables whenever data changes. This feels redundant compared to relational design, but it is the deliberate trade-off: Cassandra gives up flexibility in querying in exchange for extremely fast, predictable writes and reads at any scale.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Tunable consistency</h4>
-        <p>Cassandra allows per-operation consistency: <code>CONSISTENCY ONE</code> (fastest, returns as soon as one replica responds), <code>CONSISTENCY QUORUM</code> (majority of replicas — strong consistency if W + R &gt; N), <code>CONSISTENCY ALL</code> (all replicas, slowest, highest availability of data). The formula: for strong consistency, write consistency + read consistency must exceed the replication factor. With RF=3: QUORUM write + QUORUM read (2+2&gt;3) is strongly consistent.</p>
+        <p>Cassandra lets you dial in how strict you want consistency to be on each operation. <code>CONSISTENCY ONE</code> returns as soon as the first replica responds — fastest, but possibly stale. <code>CONSISTENCY ALL</code> waits for every replica to confirm — slowest, but always up to date. <code>CONSISTENCY QUORUM</code> is the sweet spot: it waits for a majority (more than half) of replicas. If you use QUORUM for both writes and reads, you are guaranteed to see the latest write, because the majority that served the read will always overlap with the majority that acknowledged the write. This is called strong consistency with RF=3 and quorum.</p>
       </div>
     </div>
   </div>
@@ -159,21 +159,21 @@
       <div class="step-num">1</div>
       <div>
         <h4>Native graph storage (Neo4j)</h4>
-        <p>Neo4j stores nodes and relationships as first-class objects with direct pointers. Traversing a relationship from node A to node B is a direct pointer follow — O(1) regardless of graph size. In a relational DB, finding "friends of friends" requires two JOINs; at 5 hops deep, the JOIN tree grows to ~n^5 where n is avg degree. Graph databases maintain O(k) per hop where k is degree of the node.</p>
+        <p>In Neo4j, relationships between nodes are stored as physical pointers — following a relationship from one node to another is a direct memory jump, not a table scan. Compare this to a relational database: finding "friends of friends" requires two JOINs, each scanning rows to find matches. At five hops deep, the relational JOIN grows enormous. In a graph database, each hop is constant-time regardless of how large the overall graph is. This is why graph databases dominate for social networks, recommendation engines, and fraud detection — these problems are all about following chains of relationships.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Cypher query language (Neo4j)</h4>
-        <p>Cypher expresses graph patterns visually. To find all friends-of-friends within 3 hops: <code>MATCH (user:Person {name: 'Alice'})-[:KNOWS*1..3]-(friend:Person) RETURN DISTINCT friend.name</code>. The <code>*1..3</code> means 1 to 3 relationship hops. This same query in SQL would require 3 self-joins of the relationships table — complex and slow at scale.</p>
+        <p>Graph databases have their own query language. Neo4j uses Cypher, which is designed to look like the graph you are drawing. The pattern <code>(Alice)-[:KNOWS]->(Bob)</code> reads almost literally: "Alice knows Bob." To find everyone within 3 hops of Alice: <code>MATCH (user:Person {name: 'Alice'})-[:KNOWS*1..3]-(friend:Person) RETURN DISTINCT friend.name</code>. The <code>*1..3</code> means "follow 1 to 3 KNOWS relationships." Writing this same query in SQL would require three separate self-joins and becomes difficult to read and slow at scale.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>When NOT to use a graph DB</h4>
-        <p>Graph databases struggle with: bulk aggregations across all nodes (use a columnar or relational DB), high write throughput (Neo4j writes are not as fast as Cassandra), simple entity lookups without relationship traversal (use a document or relational DB). Graph DBs excel specifically when you need multi-hop relationship queries and the relationships themselves carry properties (e.g., edge weights in a routing graph).</p>
+        <p>Graph databases have clear weaknesses. Aggregating data across all nodes — like "count all users by country" — is not what they are built for; a relational or columnar database does this better. Write throughput is lower than what Cassandra or Kafka can handle. If your main queries are simple lookups like "get user by ID," the overhead of a graph database adds no value. Use a graph database when the core of your problem is navigating multi-step relationships, and the relationships themselves carry data (like the strength of a connection or the distance of a route).</p>
       </div>
     </div>
   </div>
