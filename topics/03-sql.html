@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>SQL Fundamentals — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#10B981}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -38,22 +38,22 @@
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">🔍</div>
+      <div class="mini-card-icon"></div>
       <h4>SELECT Pipeline</h4>
       <p>Logical execution order: FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT. NOT the textual order you write it.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🪟</div>
+      <div class="mini-card-icon"></div>
       <h4>Window Functions</h4>
       <p>OVER(PARTITION BY … ORDER BY …) — aggregate over a sliding window without collapsing rows. ROW_NUMBER, RANK, LAG, LEAD, SUM OVER.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📎</div>
+      <div class="mini-card-icon"></div>
       <h4>CTEs (WITH clause)</h4>
       <p>Named subqueries defined before the main query. Improve readability, enable recursion (WITH RECURSIVE for hierarchies/graphs), and can be referenced multiple times.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📊</div>
+      <div class="mini-card-icon"></div>
       <h4>EXPLAIN / EXPLAIN ANALYZE</h4>
       <p>Shows the execution plan: node types (SeqScan, IndexScan, HashJoin), estimated vs actual rows, cost estimates. Essential for performance debugging.</p>
     </div>
@@ -94,6 +94,17 @@
 <span class="kw">SELECT</span> * <span class="kw">FROM</span> org <span class="kw">ORDER BY</span> depth, name;</pre>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>SQL = DDL + DML + DCL</strong>. DDL defines schema; DML queries and mutates data; DCL controls access.</li>
+      <li><strong>Window functions</strong> (ROW_NUMBER, RANK, LAG) operate over a partition without collapsing rows like GROUP BY.</li>
+      <li><strong>EXPLAIN / EXPLAIN ANALYZE</strong> reveals the execution plan — always check before deploying a slow query.</li>
+      <li><strong>CTEs</strong> (WITH clause) improve readability and enable recursive queries (e.g. tree traversal).</li>
+      <li>Subqueries in SELECT, FROM, WHERE, and HAVING enable complex single-statement logic.</li>
+    </ul>
+  </div>
+
   <!-- Demo -->
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">SQL Query Visualizer</h2>
@@ -101,7 +112,7 @@
 
   <div class="demo-section" id="demo-sql">
     <div class="demo-header">
-      <h3>⚡ Live SQL Filter</h3>
+      <h3>Live SQL Filter</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-preset="0">WHERE dept='Engineering'</button>
         <button class="demo-btn" data-preset="1">WHERE salary&gt;80000</button>
@@ -120,19 +131,19 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ SELECT * in production queries</h4>
+      <h4>SELECT * in production queries</h4>
       <p>Fetches all columns including BLOBs and unused fields. Breaks when columns are added/removed. Always list explicit columns — the optimizer can use covering indexes only if it knows which columns you need.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ The N+1 query problem</h4>
+      <h4>The N+1 query problem</h4>
       <p>Fetching a list of N rows then running a query per row in application code. Replace with a single JOIN or a batch IN clause. N+1 is almost always the #1 performance issue in ORMs.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Using OFFSET for pagination on large tables</h4>
+      <h4>Using OFFSET for pagination on large tables</h4>
       <p>OFFSET N scans and discards N rows every time. For page 1000 with 20 rows/page you discard 20,000 rows. Use keyset pagination: WHERE id > last_seen_id ORDER BY id LIMIT 20.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Implicit type conversions in WHERE</h4>
+      <h4>Implicit type conversions in WHERE</h4>
       <p>WHERE user_id = '123' when user_id is INT causes a type cast on every row, disabling index usage. Match parameter types to column types exactly.</p>
     </div>
   </div>
@@ -200,9 +211,9 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://use-the-index-luke.com/sql/explain-plan" target="_blank">📖 Reading EXPLAIN Plans</a>
-    <a class="reading-link" href="https://www.postgresql.org/docs/current/functions-window.html" target="_blank">📖 PostgreSQL Window Functions</a>
-    <a class="reading-link" href="https://modern-sql.com/" target="_blank">📖 Modern SQL</a>
+    <a class="reading-link" href="https://use-the-index-luke.com/sql/explain-plan" target="_blank">Reading EXPLAIN Plans</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/functions-window.html" target="_blank">PostgreSQL Window Functions</a>
+    <a class="reading-link" href="https://modern-sql.com/" target="_blank">Modern SQL</a>
   </div>
 
   <div class="topic-nav">

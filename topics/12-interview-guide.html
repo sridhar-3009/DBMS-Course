@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Interview Guide — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#14B8A6}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -37,22 +37,22 @@
   <div class="section-label">Interview Playbook</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">❓</div>
+      <div class="mini-card-icon"></div>
       <h4>Clarify First</h4>
       <p>Before designing: ask read/write ratio, scale (QPS, data volume), consistency requirements, latency SLA, and whether schema is fixed or flexible. Design decisions follow from answers.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📐</div>
+      <div class="mini-card-icon"></div>
       <h4>Start Normalized</h4>
       <p>Begin with 3NF — show the clean relational model. Then discuss denormalization trade-offs based on stated access patterns. Never start with a denormalized schema.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📈</div>
+      <div class="mini-card-icon"></div>
       <h4>Scale Discussion</h4>
       <p>Indexing strategy first. Then read replicas. Then sharding (which key, range vs hash). Then caching layer (Redis). Show the scaling progression, not just the final state.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">⚠️</div>
+      <div class="mini-card-icon"></div>
       <h4>Name the Trade-offs</h4>
       <p>Every design choice has a cost. Denormalization → update anomalies. Eventual consistency → stale reads. More indexes → write amplification. Examiners want to hear the trade-offs explicitly.</p>
     </div>
@@ -125,6 +125,17 @@
 );</pre>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>Always clarify first</strong>: read/write ratio, scale, consistency requirements, latency SLA, and access patterns before designing.</li>
+      <li><strong>Start normalized</strong>: 3NF first, then denormalize based on stated access patterns.</li>
+      <li><strong>Scale progression</strong>: indexes first, then read replicas, then sharding, then caching layer.</li>
+      <li><strong>Name trade-offs</strong>: denormalization causes update anomalies; eventual consistency allows stale reads; more indexes slow writes.</li>
+      <li><strong>N+1 problem</strong>: 1 query for parents + N queries for children. Fix with JOIN, eager loading, or batched IN() queries.</li>
+    </ul>
+  </div>
+
   <!-- Schema Designer Demo -->
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">Schema Designer</h2>
@@ -132,7 +143,7 @@
 
   <div class="demo-section" id="demo-interview">
     <div class="demo-header">
-      <h3>🎨 Schema Builder</h3>
+      <h3>Schema Builder</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-action="add-table">+ Add Table</button>
         <button class="demo-btn" data-action="export-sql" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">⬇ Export SQL</button>
@@ -157,19 +168,19 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Designing without asking about access patterns</h4>
+      <h4>Designing without asking about access patterns</h4>
       <p>Schema design is driven by how data is read and written. The same data can have radically different optimal schemas for a read-heavy vs write-heavy workload. Always ask before designing.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Storing everything in one giant table</h4>
+      <h4>Storing everything in one giant table</h4>
       <p>"God table" with 100+ columns, most NULL for any given row type. Discriminator columns ("type"), sparse columns, and huge row sizes kill performance and readability. Use inheritance or polymorphic patterns properly.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Forgetting created_at / updated_at on every table</h4>
+      <h4>Forgetting created_at / updated_at on every table</h4>
       <p>You will always eventually need to know when a row was created or modified for debugging, auditing, and incremental sync. Add these to every table from day one.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Using VARCHAR(255) everywhere</h4>
+      <h4>Using VARCHAR(255) everywhere</h4>
       <p>Picking 255 "because it fits" prevents the database from making good storage and statistics decisions. Use the actual expected max length. For names: VARCHAR(100). For emails: VARCHAR(254). For URLs: TEXT.</p>
     </div>
   </div>
@@ -240,10 +251,10 @@
   <!-- Further Reading -->
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321" target="_blank">📚 Designing Data-Intensive Applications (Kleppmann)</a>
-    <a class="reading-link" href="https://systemdesign.one/" target="_blank">📖 System Design Interview Prep</a>
-    <a class="reading-link" href="https://github.com/donnemartin/system-design-primer" target="_blank">📖 System Design Primer (GitHub)</a>
-    <a class="reading-link" href="https://www.hellointerview.com/learn/system-design/deep-dives/sql-vs-nosql" target="_blank">📖 SQL vs NoSQL Deep Dive</a>
+    <a class="reading-link" href="https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321" target="_blank">Designing Data-Intensive Applications (Kleppmann)</a>
+    <a class="reading-link" href="https://systemdesign.one/" target="_blank">System Design Interview Prep</a>
+    <a class="reading-link" href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer (GitHub)</a>
+    <a class="reading-link" href="https://www.hellointerview.com/learn/system-design/deep-dives/sql-vs-nosql" target="_blank">SQL vs NoSQL Deep Dive</a>
   </div>
 
   <!-- Topic Nav -->

@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Concurrency Control — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#EC4899}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -34,25 +34,36 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>2PL (Two-Phase Locking)</strong>: growing phase acquires locks, shrinking phase releases them. No new locks after first release.</li>
+      <li><strong>Shared lock (S)</strong>: allows concurrent reads. <strong>Exclusive lock (X)</strong>: blocks all other access.</li>
+      <li><strong>Deadlock</strong>: cycle in the wait-for graph. Detected by victim selection (abort the youngest/cheapest transaction).</li>
+      <li><strong>MVCC</strong> avoids reader-writer conflicts by giving each transaction a consistent snapshot.</li>
+      <li>Strict 2PL (hold all locks until commit) prevents cascading aborts.</li>
+    </ul>
+  </div>
+
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">🔐</div>
+      <div class="mini-card-icon"></div>
       <h4>Two-Phase Locking (2PL)</h4>
       <p>Growing phase: acquire locks, never release. Shrinking phase: release locks, never acquire. Guarantees serializability. Strict 2PL holds all locks until commit.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📸</div>
+      <div class="mini-card-icon"></div>
       <h4>MVCC</h4>
       <p>Each write creates a new row version. Readers see a consistent snapshot without locking. Readers never block writers, writers never block readers. PostgreSQL's primary concurrency strategy.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">💀</div>
+      <div class="mini-card-icon"></div>
       <h4>Deadlock</h4>
       <p>T1 waits for T2's lock. T2 waits for T1's lock. Cycle. Neither can proceed. DBMS detects via wait-for graph cycle detection, kills one transaction to break the cycle.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">⚖️</div>
+      <div class="mini-card-icon"></div>
       <h4>Optimistic Concurrency</h4>
       <p>No locking. Execute freely, validate at commit. If conflict detected, abort and retry. Efficient under low contention; expensive under high contention (wasted work).</p>
     </div>
@@ -103,7 +114,7 @@
 
   <div class="demo-section" id="demo-concurrency">
     <div class="demo-header">
-      <h3>🔐 2PL Lock Table</h3>
+      <h3>2PL Lock Table</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-action="run-2pl" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">▶ Run Simulation</button>
         <button class="demo-btn" data-action="reset-2pl">↩ Reset</button>
@@ -116,15 +127,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Acquiring locks in inconsistent order</h4>
+      <h4>Acquiring locks in inconsistent order</h4>
       <p>If T1 locks table A then B, and T2 locks table B then A, a deadlock is guaranteed under concurrent execution. Always acquire locks in a consistent global order (e.g., alphabetical by table name, or by PK ascending).</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Table-level locks for row-level operations</h4>
+      <h4>Table-level locks for row-level operations</h4>
       <p>Using LOCK TABLE when a row-level FOR UPDATE would suffice blocks the entire table. All concurrent readers and writers queue up. Row-level locking has far higher concurrency.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Not handling deadlock errors in application code</h4>
+      <h4>Not handling deadlock errors in application code</h4>
       <p>Deadlocks are normal in concurrent applications. The DBMS will abort one transaction with a "deadlock detected" error (SQLSTATE 40P01 in PostgreSQL). Application code must catch this and retry the transaction — not crash.</p>
     </div>
   </div>
@@ -192,7 +203,7 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.postgresql.org/docs/current/explicit-locking.html" target="_blank">📖 PostgreSQL Explicit Locking</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/explicit-locking.html" target="_blank">PostgreSQL Explicit Locking</a>
     <a class="reading-link" href="https://www.cs.cmu.edu/~natassa/courses/15-721/papers/p492-ports.pdf" target="_blank">📄 SSI Paper</a>
   </div>
 

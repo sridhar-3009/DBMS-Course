@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Transactions &amp; ACID — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#EF4444}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -35,25 +35,36 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>Isolation levels</strong> (weakest to strongest): READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE.</li>
+      <li><strong>Dirty read</strong>: reading an uncommitted change. Prevented at READ COMMITTED+.</li>
+      <li><strong>Non-repeatable read</strong>: same SELECT returns different rows. Prevented at REPEATABLE READ+.</li>
+      <li><strong>Phantom read</strong>: new rows appear in a repeated range query. Prevented at SERIALIZABLE.</li>
+      <li><strong>MVCC</strong>: readers don't block writers — each transaction sees a consistent snapshot.</li>
+    </ul>
+  </div>
+
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">⚛️</div>
+      <div class="mini-card-icon"></div>
       <h4>Atomicity</h4>
       <p>All-or-nothing. A transaction either commits fully or rolls back completely — no partial state ever visible. Enforced via WAL undo log.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">✅</div>
+      <div class="mini-card-icon"></div>
       <h4>Consistency</h4>
       <p>A transaction takes the DB from one valid state to another. Schema constraints, triggers, and application invariants must all hold before and after.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🏝</div>
+      <div class="mini-card-icon"></div>
       <h4>Isolation</h4>
       <p>Concurrent transactions don't interfere. The illusion: each transaction executes as if it were the only one running. Enforced via locking or MVCC.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">💾</div>
+      <div class="mini-card-icon"></div>
       <h4>Durability</h4>
       <p>Once committed, data survives crashes. WAL (Write-Ahead Log) ensures committed changes are written to durable storage before the commit returns.</p>
     </div>
@@ -112,7 +123,7 @@
 
   <div class="demo-section" id="demo-transaction">
     <div class="demo-header">
-      <h3>⏱ Concurrent Transaction Simulator</h3>
+      <h3>Concurrent Transaction Simulator</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-isolation="READ_UNCOMMITTED">READ UNCOMMITTED</button>
         <button class="demo-btn active" data-isolation="READ_COMMITTED">READ COMMITTED</button>
@@ -127,15 +138,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Long-running transactions</h4>
+      <h4>Long-running transactions</h4>
       <p>Transactions held open for seconds or minutes block other writers, accumulate MVCC versions (bloating the database), and increase the blast radius of failures. Keep transactions short and focused.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Doing HTTP calls inside a transaction</h4>
+      <h4>Doing HTTP calls inside a transaction</h4>
       <p>If the HTTP request hangs, your transaction holds locks indefinitely. Never call external services inside BEGIN…COMMIT. Prepare data, commit, then make the call.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Using READ UNCOMMITTED outside of monitoring queries</h4>
+      <h4>Using READ UNCOMMITTED outside of monitoring queries</h4>
       <p>READ UNCOMMITTED is almost never the right choice in application code. The only legitimate use case is approximate analytics dashboards where dirty reads are acceptable.</p>
     </div>
   </div>
@@ -203,7 +214,7 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.postgresql.org/docs/current/transaction-iso.html" target="_blank">📖 PostgreSQL Isolation Levels</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/transaction-iso.html" target="_blank">PostgreSQL Isolation Levels</a>
     <a class="reading-link" href="https://jepsen.io/analyses" target="_blank">🔬 Jepsen Distributed Systems Analysis</a>
     <a class="reading-link" href="https://martin.kleppmann.com/2015/09/26/transactions-at-various-isolation-levels.html" target="_blank">📄 Kleppmann: Isolation Levels</a>
   </div>

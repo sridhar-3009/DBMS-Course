@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Query Processing — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#3B82F6}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -34,25 +34,36 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>Query pipeline</strong>: Parse -> Validate -> Rewrite -> Optimize -> Execute.</li>
+      <li><strong>Cost-based optimizer</strong> uses table statistics (row count, data distribution, index cardinality) to compare plans.</li>
+      <li><strong>Nested loop join</strong>: O(n*m), fast when inner table has an index. <strong>Hash join</strong>: O(n+m), best for large un-indexed joins.</li>
+      <li><strong>Sort-merge join</strong>: efficient when both sides are already sorted or have matching indexes.</li>
+      <li><strong>EXPLAIN ANALYZE</strong> shows actual vs estimated rows — large discrepancies indicate stale statistics.</li>
+    </ul>
+  </div>
+
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">📐</div>
+      <div class="mini-card-icon"></div>
       <h4>Query Optimizer</h4>
       <p>Enumerates possible execution plans, estimates cost (I/O + CPU) using table statistics, and selects the minimum-cost plan. Cost-based optimizers use histograms and distinct value counts.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🔀</div>
+      <div class="mini-card-icon"></div>
       <h4>Join Algorithms</h4>
       <p>Nested Loop (small inner table), Hash Join (one side fits in memory), Merge Join (both sides sorted). The optimizer picks based on table sizes and available indexes.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📊</div>
+      <div class="mini-card-icon"></div>
       <h4>Statistics &amp; Cardinality</h4>
       <p>Histograms track value distribution. Cardinality estimates predict how many rows survive filters. Bad estimates → bad plans → slow queries. ANALYZE refreshes statistics.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🧊</div>
+      <div class="mini-card-icon"></div>
       <h4>Materialized Views</h4>
       <p>Precomputed query results stored on disk. Trade stale data for instant reads. Used for expensive aggregations, complex joins, and BI dashboards.</p>
     </div>
@@ -91,7 +102,7 @@
 
   <div class="demo-section" id="demo-query">
     <div class="demo-header">
-      <h3>📋 Execution Plan Tree</h3>
+      <h3>Execution Plan Tree</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-plan="simple">Simple SELECT</button>
         <button class="demo-btn" data-plan="join">JOIN Query</button>
@@ -128,15 +139,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Stale statistics causing bad plans</h4>
+      <h4>Stale statistics causing bad plans</h4>
       <p>If ANALYZE hasn't run after a large data load, the optimizer uses outdated row count estimates. A table that grew from 100K to 10M rows without ANALYZE may get Nested Loop joins instead of Hash joins — orders of magnitude slower.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Implicit type casts defeating index usage</h4>
+      <h4>Implicit type casts defeating index usage</h4>
       <p>WHERE user_id = '12345' when user_id is BIGINT forces a cast on every row during a sequential scan. The optimizer can't use an index because it doesn't know the cast will preserve order.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Not using EXPLAIN ANALYZE before deploying</h4>
+      <h4>Not using EXPLAIN ANALYZE before deploying</h4>
       <p>EXPLAIN (without ANALYZE) shows only estimated costs. EXPLAIN ANALYZE shows actual row counts and time. A query with estimated 100 rows but actual 100,000 rows has bad statistics and will have a bad plan.</p>
     </div>
   </div>
@@ -204,7 +215,7 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.postgresql.org/docs/current/planner-optimizer.html" target="_blank">📖 PostgreSQL Planner/Optimizer</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/planner-optimizer.html" target="_blank">PostgreSQL Planner/Optimizer</a>
     <a class="reading-link" href="https://explain.depesz.com/" target="_blank">🔧 Explain Depesz (Plan Visualizer)</a>
   </div>
 

@@ -1,23 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Relational Model — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#8B5CF6}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -39,22 +39,22 @@
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">📋</div>
+      <div class="mini-card-icon"></div>
       <h4>Relation (Table)</h4>
       <p>A relation is a set of tuples (rows), all sharing the same schema (ordered list of attribute names and domains). Order of tuples is undefined — it's a set, not a list.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🔑</div>
+      <div class="mini-card-icon"></div>
       <h4>Keys</h4>
       <p>Superkey → minimal superkey = Candidate Key → chosen CK = Primary Key. Foreign Keys enforce referential integrity between relations.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🔗</div>
+      <div class="mini-card-icon"></div>
       <h4>Referential Integrity</h4>
       <p>A FK value must either be NULL or match a PK in the referenced table. ON DELETE CASCADE / SET NULL / RESTRICT control what happens when the parent row is deleted.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🧮</div>
+      <div class="mini-card-icon"></div>
       <h4>Relational Algebra</h4>
       <p>Six fundamental operations: σ (select rows), π (project columns), ⋈ (join), ∪ (union), − (difference), × (Cartesian product). All SQL compiles down to these.</p>
     </div>
@@ -109,6 +109,17 @@
 );</pre>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>Relation</strong> = table. <strong>Tuple</strong> = row. <strong>Attribute</strong> = column. All values are atomic (1NF).</li>
+      <li><strong>Primary key</strong> uniquely identifies a tuple. <strong>Foreign key</strong> references a primary key in another relation.</li>
+      <li><strong>INNER JOIN</strong> returns only matching rows. <strong>LEFT JOIN</strong> keeps all rows from the left, NULLs on no match.</li>
+      <li><strong>Relational algebra</strong>: selection (sigma), projection (pi), join, union, difference — the theoretical basis for SQL.</li>
+      <li>Candidate keys, superkeys, and functional dependencies underpin normalization theory.</li>
+    </ul>
+  </div>
+
   <!-- Demo -->
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">JOIN Visualizer</h2>
@@ -116,7 +127,7 @@
 
   <div class="demo-section" id="demo-relational">
     <div class="demo-header">
-      <h3>⋈ Relational Join Demo</h3>
+      <h3>Relational Join Demo</h3>
       <div class="demo-controls">
         <button class="demo-btn join-btn" data-join="INNER">INNER JOIN</button>
         <button class="demo-btn join-btn" data-join="LEFT">LEFT JOIN</button>
@@ -135,15 +146,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Choosing the wrong join type</h4>
+      <h4>Choosing the wrong join type</h4>
       <p>Using INNER JOIN when you need LEFT JOIN silently drops rows. Always verify expected result cardinality. A missing row in the result is often worse than an error.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Missing referential integrity constraints</h4>
+      <h4>Missing referential integrity constraints</h4>
       <p>Storing FK values without declaring FOREIGN KEY lets orphaned rows accumulate — child rows pointing to deleted parents. This causes silent data corruption that's expensive to fix later.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Using natural joins in production queries</h4>
+      <h4>Using natural joins in production queries</h4>
       <p>NATURAL JOIN matches on ALL common column names. Adding a column to a table can silently change join semantics. Always use explicit ON conditions.</p>
     </div>
   </div>
@@ -212,7 +223,7 @@
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
     <a class="reading-link" href="https://www.cs.cmu.edu/~christos/COURSES/826.S03/HANDOUTS/codd72.pdf" target="_blank">📄 Codd's Original 1970 Paper</a>
-    <a class="reading-link" href="https://en.wikipedia.org/wiki/Relational_algebra" target="_blank">📖 Relational Algebra (Wikipedia)</a>
+    <a class="reading-link" href="https://en.wikipedia.org/wiki/Relational_algebra" target="_blank">Relational Algebra (Wikipedia)</a>
   </div>
 
   <div class="topic-nav">

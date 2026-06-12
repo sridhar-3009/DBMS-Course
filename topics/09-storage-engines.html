@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Storage Engines — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#F97316}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -34,25 +34,36 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>InnoDB</strong>: B+tree clustered index, row-level locking, MVCC, WAL (redo log), buffer pool.</li>
+      <li><strong>WAL (Write-Ahead Log)</strong>: changes are logged before being applied to data pages. Enables redo recovery.</li>
+      <li><strong>LSM tree</strong>: writes go to an in-memory memtable, flushed to sorted SSTables. High write throughput, compaction cost.</li>
+      <li><strong>Buffer pool</strong>: LRU cache of disk pages in RAM. Hit rate target is 99%+ in production.</li>
+      <li><strong>Vacuum / compaction</strong>: reclaims space from deleted rows/versions. Critical for MVCC storage health.</li>
+    </ul>
+  </div>
+
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">📄</div>
+      <div class="mini-card-icon"></div>
       <h4>Pages &amp; Buffer Pool</h4>
       <p>Data stored in fixed-size pages (typically 4KB–16KB). Buffer Pool is an in-memory page cache. Dirty pages (modified but not flushed) are written to disk on checkpoint or eviction.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📝</div>
+      <div class="mini-card-icon"></div>
       <h4>Write-Ahead Log (WAL)</h4>
       <p>Log changes BEFORE applying them to data pages. On crash, replay the log. Ensures durability: a COMMIT can return as soon as the WAL record is flushed — data pages can follow lazily.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🌊</div>
+      <div class="mini-card-icon"></div>
       <h4>LSM Trees</h4>
       <p>Log-Structured Merge Tree: writes to an in-memory memtable, periodically flushed to sorted SSTables on disk. Background compaction merges levels. Optimized for write-heavy workloads.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🔄</div>
+      <div class="mini-card-icon"></div>
       <h4>Checkpoints &amp; Recovery</h4>
       <p>Checkpoint: flush all dirty pages and record WAL position. On crash recovery, only replay WAL from last checkpoint. Reduces recovery time proportional to checkpoint frequency.</p>
     </div>
@@ -92,7 +103,7 @@
 
   <div class="demo-section" id="demo-storage">
     <div class="demo-header">
-      <h3>📦 Storage Page Layout</h3>
+      <h3>Storage Page Layout</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-action="insert-row" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">+ INSERT Row</button>
         <button class="demo-btn danger" data-action="delete-row">× DELETE Row</button>
@@ -129,15 +140,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Setting innodb_flush_log_at_trx_commit = 0</h4>
+      <h4>Setting innodb_flush_log_at_trx_commit = 0</h4>
       <p>This disables WAL flushing on commit — MySQL uses OS buffers only. Up to 1 second of committed data can be lost on crash. Never use this for financial or critical data. Mode 2 (flush but no fsync) is a safer compromise.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Not running VACUUM (PostgreSQL)</h4>
+      <h4>Not running VACUUM (PostgreSQL)</h4>
       <p>PostgreSQL MVCC never overwrites rows — dead tuples accumulate. Without VACUUM, tables bloat (4× is common), queries slow down, and eventually transaction ID wraparound (every ~2B transactions) causes catastrophic downtime. Autovacuum must be tuned and monitored.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Undersizing the buffer pool</h4>
+      <h4>Undersizing the buffer pool</h4>
       <p>If the buffer pool is too small, hot pages are constantly evicted and re-read from disk. 70–80% of RAM on a dedicated database server is the standard starting point. Monitor <code>innodb_buffer_pool_reads</code> (disk reads) vs <code>innodb_buffer_pool_read_requests</code> (cache hits).</p>
     </div>
   </div>
@@ -205,8 +216,8 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://dev.mysql.com/doc/refman/8.0/en/innodb-storage-engine.html" target="_blank">📖 InnoDB Architecture</a>
-    <a class="reading-link" href="https://github.com/facebook/rocksdb/wiki/RocksDB-Overview" target="_blank">📖 RocksDB (LSM) Overview</a>
+    <a class="reading-link" href="https://dev.mysql.com/doc/refman/8.0/en/innodb-storage-engine.html" target="_blank">InnoDB Architecture</a>
+    <a class="reading-link" href="https://github.com/facebook/rocksdb/wiki/RocksDB-Overview" target="_blank">RocksDB (LSM) Overview</a>
   </div>
 
   <div class="topic-nav">

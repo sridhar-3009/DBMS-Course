@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Distributed Databases — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#A855F7}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -34,25 +34,36 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>Raft consensus</strong>: leader election + log replication. Leader handles all writes; followers replicate. Majority quorum required.</li>
+      <li><strong>Sharding</strong>: horizontal partitioning. Range sharding is simple but creates hot spots; hash sharding distributes evenly.</li>
+      <li><strong>2PC (Two-Phase Commit)</strong>: coordinator asks all participants to prepare, then commits if all agree. Blocking on coordinator failure.</li>
+      <li><strong>Read replicas</strong>: serve read traffic from followers, reducing primary load. Lag is the trade-off.</li>
+      <li><strong>Vector clocks / CRDT</strong>: enable conflict-free eventual consistency without coordination.</li>
+    </ul>
+  </div>
+
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">🗳</div>
+      <div class="mini-card-icon"></div>
       <h4>Raft Consensus</h4>
       <p>Leader-based consensus for replicated logs. Leader handles all writes, replicates to followers. Majority quorum required for commit. Automatic leader election on failure.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">✂️</div>
+      <div class="mini-card-icon"></div>
       <h4>Sharding</h4>
       <p>Partition data across multiple nodes by a shard key. Range sharding (ordered keys) vs Hash sharding (uniform distribution). Each shard independently handles its key range.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🔁</div>
+      <div class="mini-card-icon"></div>
       <h4>Replication</h4>
       <p>Synchronous: wait for N replicas to confirm before commit (strong consistency, higher latency). Asynchronous: commit immediately, replicate in background (low latency, risk of data loss on primary failure).</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">⚖️</div>
+      <div class="mini-card-icon"></div>
       <h4>Two-Phase Commit (2PC)</h4>
       <p>Coordinator asks all participants to PREPARE. If all say YES, coordinator sends COMMIT to all. Used for distributed transactions spanning multiple shards. Blocking on coordinator failure.</p>
     </div>
@@ -95,7 +106,7 @@
 
   <div class="demo-section" id="demo-distributed">
     <div class="demo-header">
-      <h3>🗳 Raft Consensus (3-node cluster)</h3>
+      <h3>Raft Consensus (3-node cluster)</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-action="raft-write" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">✏ Send Write</button>
         <button class="demo-btn danger" data-action="kill-leader">💀 Kill Leader</button>
@@ -132,15 +143,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Using auto-increment PKs as shard keys</h4>
+      <h4>Using auto-increment PKs as shard keys</h4>
       <p>Sequential keys → all writes go to the last range shard → hot spot. One node gets 100% of write traffic. Use random UUIDs (UUID v4) or time-bucketed keys (ULID/KSUID) for uniform distribution.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Cross-shard transactions for every operation</h4>
+      <h4>Cross-shard transactions for every operation</h4>
       <p>2PC is expensive: 2 round trips, blocking on coordinator failure. Design your shard key so that related data lives on the same shard (tenant_id, user_id) — keep transactions local where possible.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Under-sized Raft groups</h4>
+      <h4>Under-sized Raft groups</h4>
       <p>A 2-node cluster has no fault tolerance — one node failure loses quorum. Always use odd numbers: 3 (tolerate 1 failure), 5 (tolerate 2). More than 7 nodes in a Raft group hurts write latency due to larger quorum.</p>
     </div>
   </div>
@@ -208,9 +219,9 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://raft.github.io/" target="_blank">📖 The Raft Consensus Algorithm</a>
-    <a class="reading-link" href="https://cloud.google.com/spanner/docs/true-time-external-consistency" target="_blank">📖 Spanner TrueTime</a>
-    <a class="reading-link" href="https://planetscale.com/docs/concepts/vitess-primer" target="_blank">📖 Vitess Primer</a>
+    <a class="reading-link" href="https://raft.github.io/" target="_blank">The Raft Consensus Algorithm</a>
+    <a class="reading-link" href="https://cloud.google.com/spanner/docs/true-time-external-consistency" target="_blank">Spanner TrueTime</a>
+    <a class="reading-link" href="https://planetscale.com/docs/concepts/vitess-primer" target="_blank">Vitess Primer</a>
   </div>
 
   <div class="topic-nav">

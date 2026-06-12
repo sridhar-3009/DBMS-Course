@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>NoSQL Databases — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#84CC16}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -34,25 +34,36 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>CAP theorem</strong>: a distributed system can guarantee at most 2 of: Consistency, Availability, Partition tolerance.</li>
+      <li><strong>Document DB</strong> (MongoDB): flexible schema, nested documents. Good for variable-structure data.</li>
+      <li><strong>Wide-column DB</strong> (Cassandra): optimized for high-write, time-series workloads. No joins.</li>
+      <li><strong>Key-value DB</strong> (Redis, DynamoDB): simplest data model, fastest reads, limited query power.</li>
+      <li><strong>Graph DB</strong> (Neo4j): native relationship traversal. Best for social graphs, recommendation engines.</li>
+    </ul>
+  </div>
+
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">📋</div>
+      <div class="mini-card-icon"></div>
       <h4>CAP Theorem</h4>
       <p>In a distributed system, you can guarantee at most 2 of 3: Consistency (all nodes see same data), Availability (every request gets a response), Partition Tolerance (system works despite network splits).</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📁</div>
+      <div class="mini-card-icon"></div>
       <h4>Document Store</h4>
       <p>Store JSON/BSON documents with flexible schema. No JOIN needed — embed related data. Great for hierarchical data, user profiles, catalogs. MongoDB, Couchbase, Firestore.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📊</div>
+      <div class="mini-card-icon"></div>
       <h4>Wide-Column Store</h4>
       <p>Rows identified by a key; columns can differ per row. Column families stored together on disk — efficient for reading specific columns across many rows. Cassandra, HBase, Bigtable.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">⚡</div>
+      <div class="mini-card-icon"></div>
       <h4>Eventual Consistency</h4>
       <p>Updates propagate asynchronously across replicas. All replicas will converge to the same value — eventually. Trades immediate consistency for availability and partition tolerance.</p>
     </div>
@@ -86,7 +97,7 @@
 
   <div class="demo-section" id="demo-nosql">
     <div class="demo-header">
-      <h3>📊 Document vs Column Store Access Patterns</h3>
+      <h3>Document vs Column Store Access Patterns</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-action="query-total">Query: totals only</button>
         <button class="demo-btn" data-action="query-all">Query: all columns</button>
@@ -100,15 +111,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Using NoSQL just because it's "web scale"</h4>
+      <h4>Using NoSQL just because it's "web scale"</h4>
       <p>NoSQL doesn't automatically scale better than SQL. PostgreSQL handles millions of rows trivially. Choose NoSQL when you have a specific use case (flexible schema, write-heavy, extreme scale) not based on hype.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Ignoring consistency requirements for "eventual consistency"</h4>
+      <h4>Ignoring consistency requirements for "eventual consistency"</h4>
       <p>Eventual consistency means reads CAN return stale data. For financial transactions, inventory counts, or anything requiring correctness, eventual consistency is not acceptable without additional application-level conflict resolution.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Modeling NoSQL data like a relational schema</h4>
+      <h4>Modeling NoSQL data like a relational schema</h4>
       <p>Normalizing documents into separate collections and joining them in application code undoes NoSQL's benefits. Design around access patterns: embed data that's always read together. Reference (FK-style) only when data is large and rarely accessed together.</p>
     </div>
   </div>
@@ -176,8 +187,8 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.mongodb.com/docs/manual/data-modeling/" target="_blank">📖 MongoDB Data Modeling</a>
-    <a class="reading-link" href="https://cassandra.apache.org/doc/latest/cassandra/data_modeling/" target="_blank">📖 Cassandra Data Modeling</a>
+    <a class="reading-link" href="https://www.mongodb.com/docs/manual/data-modeling/" target="_blank">MongoDB Data Modeling</a>
+    <a class="reading-link" href="https://cassandra.apache.org/doc/latest/cassandra/data_modeling/" target="_blank">Cassandra Data Modeling</a>
     <a class="reading-link" href="https://jepsen.io/consistency" target="_blank">🔬 Consistency Models (Jepsen)</a>
   </div>
 

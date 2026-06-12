@@ -1,214 +1,257 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DBMS Illustrated — Interactive Database Management Systems Course</title>
-  <meta name="description" content="Learn Database Management Systems through interactive animations, live canvas demos, and visual explanations. 12 in-depth topics.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Learn DBMS through interactive animations, live canvas demos, and visual explanations. 12 in-depth topics, zero frameworks.">
+  <script>try{var t=localStorage.getItem('dbms-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','dark')}</script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<!-- ── Navbar ──────────────────────────────────────────────── -->
+<div class="reading-progress" id="reading-progress"></div>
+
 <nav class="navbar">
   <div class="navbar-inner">
     <a class="navbar-brand" href="index.html">
-      <span class="brand-icon">🗄</span>
+      <span class="brand-icon" style="font-size:1.1rem;color:var(--primary-soft)">&#9670;</span>
       DBMS Illustrated
     </a>
     <div class="navbar-links">
       <a href="#topics">Topics</a>
+      <a href="topics/12-interview-guide.html">Interview Guide</a>
       <a href="https://github.com/sridhar-3009/DBMS-Course" target="_blank">GitHub</a>
     </div>
     <div class="navbar-actions">
-      <button class="btn-icon" id="theme-toggle" title="Toggle theme">☀️</button>
+      <button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button>
     </div>
   </div>
 </nav>
 
 <!-- ── Hero ────────────────────────────────────────────────── -->
 <section class="hero">
-  <canvas id="hero-canvas"></canvas>
-  <div class="container">
-    <div class="hero-content animate-fade-up">
-      <span class="hero-eyebrow">✦ Interactive Course</span>
-      <h1>Master Databases <span class="text-gradient">Visually</span></h1>
-      <p class="subtitle">12 topics. Live canvas demos. Animated concepts. From ER diagrams to distributed consensus — learn DBMS the way it was meant to be understood.</p>
-      <div class="hero-cta">
-        <a href="#topics" class="btn-primary">Start Learning →</a>
-        <a href="https://github.com/sridhar-3009/DBMS-Course" class="btn-outline" target="_blank">⭐ GitHub</a>
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Learn databases the visual way
+    </div>
+    <h1>Complex data,<br><em>simply beautiful.</em></h1>
+    <p class="hero-sub">An original, animated course on database management systems. From your first ER diagram to acing the system design interview — every concept illustrated, every trade-off named.</p>
+    <div class="hero-ctas">
+      <a href="#topics" class="btn-primary">Start Learning</a>
+      <a href="https://github.com/sridhar-3009/DBMS-Course" class="btn-outline" target="_blank">View on GitHub</a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-val">12</div>
+        <div class="hero-stat-label">Topics</div>
+      </div>
+      <div>
+        <div class="hero-stat-val">12</div>
+        <div class="hero-stat-label">Live Demos</div>
+      </div>
+      <div>
+        <div class="hero-stat-val">60+</div>
+        <div class="hero-stat-label">Interview Q&amp;As</div>
+      </div>
+      <div>
+        <div class="hero-stat-val">0</div>
+        <div class="hero-stat-label">Frameworks</div>
       </div>
     </div>
   </div>
+  <div class="hero-3d-panel">
+    <canvas id="hero-canvas"></canvas>
+  </div>
+  <div class="scroll-hint">Scroll</div>
 </section>
 
-<!-- ── Stats ───────────────────────────────────────────────── -->
-<div class="container">
-  <div class="stats-bar">
-    <div class="stat-item"><span class="stat-num">12</span><span class="stat-label">Topic Modules</span></div>
-    <div class="stat-item"><span class="stat-num">12</span><span class="stat-label">Live Canvas Demos</span></div>
-    <div class="stat-item"><span class="stat-num">36+</span><span class="stat-label">Quiz Questions</span></div>
-    <div class="stat-item"><span class="stat-num">60+</span><span class="stat-label">Interview Q&As</span></div>
-    <div class="stat-item"><span class="stat-num">0</span><span class="stat-label">Frameworks Used</span></div>
-  </div>
+<!-- ── Stats bar ───────────────────────────────────────────── -->
+<div class="stats-bar">
+  <div class="stat-item"><span class="stat-num">12</span><span class="stat-txt">Topic Modules</span></div>
+  <div class="stat-item"><span class="stat-num">12</span><span class="stat-txt">Canvas Demos</span></div>
+  <div class="stat-item"><span class="stat-num">36+</span><span class="stat-txt">Quiz Questions</span></div>
+  <div class="stat-item"><span class="stat-num">60+</span><span class="stat-txt">Interview Q&amp;As</span></div>
+  <div class="stat-item"><span class="stat-num">100%</span><span class="stat-txt">Free &amp; Offline</span></div>
 </div>
 
-<!-- ── Topics Grid ─────────────────────────────────────────── -->
-<div class="container" id="topics">
-  <div style="padding-top:44px;">
-    <div class="section-label">Curriculum</div>
-    <h2 class="section-title">12 Essential DBMS Topics</h2>
-    <p class="section-desc">Every topic includes an animated demo, quiz, and interview Q&A. No frameworks, no fluff — pure understanding.</p>
-  </div>
+<!-- ── Course grid ─────────────────────────────────────────── -->
+<section class="curriculum-section" id="topics">
+  <div class="curriculum-label">The Curriculum</div>
+  <h2 class="curriculum-title">Twelve carefully sequenced topics.</h2>
+  <p class="curriculum-sub">Start at the top or jump to what you need. Every topic includes an animated demo, MCQ quiz, and interview Q&amp;A.</p>
+
   <div class="course-grid">
 
-    <a href="topics/01-intro.html" class="topic-card" style="--card-color:#0EA5E9">
-      <span class="card-num">Topic 01</span>
-      <h3>Introduction to DBMS</h3>
-      <p>Architecture, data models, ACID overview, and why databases beat file systems.</p>
-      <div class="card-tags"><span class="tag">ER Diagram</span><span class="tag">Architecture</span></div>
+    <a href="topics/01-intro.html" class="course-card" style="--card-color:#0EA5E9">
+      <div class="card-num">01 &mdash; Beginner &middot; 25 min</div>
+      <div class="card-title">Introduction to DBMS</div>
+      <p class="card-desc">Architecture, data models, ACID overview, and why databases beat file systems for structured data.</p>
+      <div class="card-meta">
+        <span class="card-tag">ER Diagram Demo</span>
+        <span class="card-tag">Architecture</span>
+      </div>
     </a>
 
-    <a href="topics/02-relational-model.html" class="topic-card" style="--card-color:#8B5CF6">
-      <span class="card-num">Topic 02</span>
-      <h3>Relational Model</h3>
-      <p>Relations, keys, constraints, and relational algebra with live JOIN visualization.</p>
-      <div class="card-tags"><span class="tag">JOIN Demo</span><span class="tag">Keys</span></div>
+    <a href="topics/02-relational-model.html" class="course-card" style="--card-color:#8B5CF6">
+      <div class="card-num">02 &mdash; Beginner &middot; 30 min</div>
+      <div class="card-title">Relational Model</div>
+      <p class="card-desc">Relations, keys, constraints, and relational algebra — with a live JOIN visualizer.</p>
+      <div class="card-meta">
+        <span class="card-tag">JOIN Visualizer</span>
+        <span class="card-tag">Keys</span>
+      </div>
     </a>
 
-    <a href="topics/03-sql.html" class="topic-card" style="--card-color:#10B981">
-      <span class="card-num">Topic 03</span>
-      <h3>SQL Fundamentals</h3>
-      <p>SELECT, JOINs, subqueries, window functions, and EXPLAIN plans.</p>
-      <div class="card-tags"><span class="tag">Query Viz</span><span class="tag">EXPLAIN</span></div>
+    <a href="topics/03-sql.html" class="course-card" style="--card-color:#10B981">
+      <div class="card-num">03 &mdash; Beginner &middot; 35 min</div>
+      <div class="card-title">SQL Fundamentals</div>
+      <p class="card-desc">SELECT, JOINs, subqueries, window functions, EXPLAIN plans — with a live query visualizer.</p>
+      <div class="card-meta">
+        <span class="card-tag">Query Visualizer</span>
+        <span class="card-tag">EXPLAIN</span>
+      </div>
     </a>
 
-    <a href="topics/04-normalization.html" class="topic-card" style="--card-color:#F59E0B">
-      <span class="card-num">Topic 04</span>
-      <h3>Normalization</h3>
-      <p>1NF → 2NF → 3NF → BCNF with animated table decomposition.</p>
-      <div class="card-tags"><span class="tag">Animated</span><span class="tag">FD</span></div>
+    <a href="topics/04-normalization.html" class="course-card" style="--card-color:#F59E0B">
+      <div class="card-num">04 &mdash; Intermediate &middot; 30 min</div>
+      <div class="card-title">Normalization</div>
+      <p class="card-desc">1NF through BCNF — animated step-by-step table decomposition to remove redundancy.</p>
+      <div class="card-meta">
+        <span class="card-tag">Animated Decomposition</span>
+        <span class="card-tag">FD</span>
+      </div>
     </a>
 
-    <a href="topics/05-transactions.html" class="topic-card" style="--card-color:#EF4444">
-      <span class="card-num">Topic 05</span>
-      <h3>Transactions &amp; ACID</h3>
-      <p>ACID properties, isolation levels, anomaly detection on a live timeline.</p>
-      <div class="card-tags"><span class="tag">MVCC</span><span class="tag">Isolation</span></div>
+    <a href="topics/05-transactions.html" class="course-card" style="--card-color:#EF4444">
+      <div class="card-num">05 &mdash; Intermediate &middot; 40 min</div>
+      <div class="card-title">Transactions &amp; ACID</div>
+      <p class="card-desc">ACID properties, isolation levels, anomalies — with an interactive isolation timeline.</p>
+      <div class="card-meta">
+        <span class="card-tag">MVCC Simulator</span>
+        <span class="card-tag">Isolation Levels</span>
+      </div>
     </a>
 
-    <a href="topics/06-indexing.html" class="topic-card" style="--card-color:#06B6D4">
-      <span class="card-num">Topic 06</span>
-      <h3>Indexing</h3>
-      <p>B+tree traversal, covering indexes, composite key order — animated search paths.</p>
-      <div class="card-tags"><span class="tag">B+tree</span><span class="tag">Range Scan</span></div>
+    <a href="topics/06-indexing.html" class="course-card" style="--card-color:#06B6D4">
+      <div class="card-num">06 &mdash; Intermediate &middot; 35 min</div>
+      <div class="card-title">Indexing</div>
+      <p class="card-desc">B+tree traversal, covering indexes, composite keys — watch the search path animate.</p>
+      <div class="card-meta">
+        <span class="card-tag">B+Tree Traversal</span>
+        <span class="card-tag">Range Scan</span>
+      </div>
     </a>
 
-    <a href="topics/07-query-processing.html" class="topic-card" style="--card-color:#3B82F6">
-      <span class="card-num">Topic 07</span>
-      <h3>Query Processing</h3>
-      <p>Query execution plans, join algorithms, the optimizer — with animated plan trees.</p>
-      <div class="card-tags"><span class="tag">Plan Tree</span><span class="tag">Cost</span></div>
+    <a href="topics/07-query-processing.html" class="course-card" style="--card-color:#3B82F6">
+      <div class="card-num">07 &mdash; Advanced &middot; 35 min</div>
+      <div class="card-title">Query Processing</div>
+      <p class="card-desc">Parsing, planning, optimization, execution — animated query plan trees.</p>
+      <div class="card-meta">
+        <span class="card-tag">Plan Tree</span>
+        <span class="card-tag">Cost Model</span>
+      </div>
     </a>
 
-    <a href="topics/08-concurrency.html" class="topic-card" style="--card-color:#EC4899">
-      <span class="card-num">Topic 08</span>
-      <h3>Concurrency Control</h3>
-      <p>2PL, MVCC, deadlock detection and resolution with a live lock table.</p>
-      <div class="card-tags"><span class="tag">2PL</span><span class="tag">Deadlock</span></div>
+    <a href="topics/08-concurrency.html" class="course-card" style="--card-color:#EC4899">
+      <div class="card-num">08 &mdash; Advanced &middot; 40 min</div>
+      <div class="card-title">Concurrency Control</div>
+      <p class="card-desc">2PL, MVCC, deadlock detection and resolution — with a live lock table.</p>
+      <div class="card-meta">
+        <span class="card-tag">2PL Demo</span>
+        <span class="card-tag">Deadlock Graph</span>
+      </div>
     </a>
 
-    <a href="topics/09-storage-engines.html" class="topic-card" style="--card-color:#F97316">
-      <span class="card-num">Topic 09</span>
-      <h3>Storage Engines</h3>
-      <p>InnoDB internals, WAL, LSM trees, buffer pool — with page/block visualization.</p>
-      <div class="card-tags"><span class="tag">WAL</span><span class="tag">LSM</span></div>
+    <a href="topics/09-storage-engines.html" class="course-card" style="--card-color:#F97316">
+      <div class="card-num">09 &mdash; Advanced &middot; 40 min</div>
+      <div class="card-title">Storage Engines</div>
+      <p class="card-desc">InnoDB internals, WAL, LSM trees, buffer pool — with page visualization.</p>
+      <div class="card-meta">
+        <span class="card-tag">Page Simulator</span>
+        <span class="card-tag">WAL / LSM</span>
+      </div>
     </a>
 
-    <a href="topics/10-nosql.html" class="topic-card" style="--card-color:#84CC16">
-      <span class="card-num">Topic 10</span>
-      <h3>NoSQL Databases</h3>
-      <p>Document, column, KV, and graph stores — CAP theorem with visual comparison.</p>
-      <div class="card-tags"><span class="tag">CAP</span><span class="tag">Comparison</span></div>
+    <a href="topics/10-nosql.html" class="course-card" style="--card-color:#84CC16">
+      <div class="card-num">10 &mdash; Intermediate &middot; 35 min</div>
+      <div class="card-title">NoSQL Databases</div>
+      <p class="card-desc">Document, column, KV, and graph stores — CAP theorem with a visual comparison.</p>
+      <div class="card-meta">
+        <span class="card-tag">NoSQL Comparison</span>
+        <span class="card-tag">CAP Theorem</span>
+      </div>
     </a>
 
-    <a href="topics/11-distributed-databases.html" class="topic-card" style="--card-color:#A855F7">
-      <span class="card-num">Topic 11</span>
-      <h3>Distributed Databases</h3>
-      <p>Raft consensus, sharding, 2PC, replication — with animated leader election.</p>
-      <div class="card-tags"><span class="tag">Raft</span><span class="tag">Sharding</span></div>
+    <a href="topics/11-distributed-databases.html" class="course-card" style="--card-color:#A855F7">
+      <div class="card-num">11 &mdash; Advanced &middot; 45 min</div>
+      <div class="card-title">Distributed Databases</div>
+      <p class="card-desc">Raft consensus, sharding, 2PC, replication — with animated leader election.</p>
+      <div class="card-meta">
+        <span class="card-tag">Raft Simulation</span>
+        <span class="card-tag">Sharding</span>
+      </div>
     </a>
 
-    <a href="topics/12-interview-guide.html" class="topic-card" style="--card-color:#14B8A6">
-      <span class="card-num">Topic 12</span>
-      <h3>Interview Guide</h3>
-      <p>Schema design patterns, system design Q&A, and a drag-and-drop schema builder.</p>
-      <div class="card-tags"><span class="tag">Schema Designer</span><span class="tag">Patterns</span></div>
+    <a href="topics/12-interview-guide.html" class="course-card" style="--card-color:#14B8A6">
+      <div class="card-num">12 &mdash; All Levels &middot; 50 min</div>
+      <div class="card-title">Interview Guide</div>
+      <p class="card-desc">Schema design patterns, system design Q&amp;A, and a drag-and-drop schema builder.</p>
+      <div class="card-meta">
+        <span class="card-tag">Schema Designer</span>
+        <span class="card-tag">Design Patterns</span>
+      </div>
     </a>
 
   </div>
-</div>
+</section>
 
-<!-- ── Why Visual? ─────────────────────────────────────────── -->
-<div class="container" style="padding-bottom:64px;">
-  <div class="section-label">Approach</div>
-  <h2 class="section-title">Why Illustrated?</h2>
-  <div class="mini-cards" style="margin-top:24px;">
-    <div class="mini-card">
-      <div class="mini-card-icon">🎨</div>
-      <h4>Canvas Demos</h4>
-      <p>Every topic has a live interactive demo — B-trees you can search, transactions you can interleave, Raft elections you can trigger.</p>
+<!-- ── Why Visual ──────────────────────────────────────────── -->
+<section class="curriculum-section" style="padding-top:0">
+  <div class="curriculum-label">Why This Course</div>
+  <h2 class="curriculum-title">Built differently.</h2>
+  <div class="course-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
+
+    <div class="course-card" style="--card-color:#7C3AED">
+      <div class="card-title">Live Canvas Demos</div>
+      <p class="card-desc">Every topic has an interactive canvas demo — B-trees you can search, Raft elections you can trigger, deadlocks you can create.</p>
     </div>
-    <div class="mini-card">
-      <div class="mini-card-icon">🧠</div>
-      <h4>Quiz Per Topic</h4>
-      <p>3 multiple-choice questions with instant feedback and explanation. Reinforce concepts immediately after learning.</p>
+
+    <div class="course-card" style="--card-color:#7C3AED">
+      <div class="card-title">Original Writing</div>
+      <p class="card-desc">Every explanation written from scratch with analogies that stick. No copy-paste from Wikipedia or textbooks.</p>
     </div>
-    <div class="mini-card">
-      <div class="mini-card-icon">💼</div>
-      <h4>Interview Ready</h4>
-      <p>5 real interview questions per topic with detailed answers. Topic 12 has a dedicated schema design interview guide.</p>
+
+    <div class="course-card" style="--card-color:#7C3AED">
+      <div class="card-title">Trade-offs, Not Dogma</div>
+      <p class="card-desc">No right answers — only trade-offs. We name them explicitly every time a design choice has a cost.</p>
     </div>
-    <div class="mini-card">
-      <div class="mini-card-icon">⚡</div>
-      <h4>Zero Dependencies</h4>
-      <p>Pure HTML, CSS, and Canvas 2D API. No build step, no npm, no frameworks. Just open in a browser and learn.</p>
+
+    <div class="course-card" style="--card-color:#7C3AED">
+      <div class="card-title">Works Offline</div>
+      <p class="card-desc">Vanilla HTML, CSS, and Canvas 2D. No npm, no build step, no frameworks. Save it, fork it, read it on a plane.</p>
     </div>
+
   </div>
-</div>
+</section>
 
 <!-- ── Footer ──────────────────────────────────────────────── -->
-<footer>
-  <div class="footer-inner">
-    <div>
-      <div class="footer-brand">🗄 DBMS Illustrated</div>
-      <p class="footer-text">An open-source interactive course on Database Management Systems. Built with vanilla HTML, CSS, and Canvas 2D.</p>
-    </div>
-    <div class="footer-col">
-      <h5>Topics</h5>
-      <ul>
-        <li><a href="topics/01-intro.html">Introduction</a></li>
-        <li><a href="topics/05-transactions.html">Transactions</a></li>
-        <li><a href="topics/06-indexing.html">Indexing</a></li>
-        <li><a href="topics/11-distributed-databases.html">Distributed DBs</a></li>
-      </ul>
-    </div>
-    <div class="footer-col">
-      <h5>Resources</h5>
-      <ul>
-        <li><a href="https://github.com/sridhar-3009/DBMS-Course" target="_blank">GitHub Repo</a></li>
-        <li><a href="topics/12-interview-guide.html">Interview Guide</a></li>
-        <li><a href="https://github.com/sridhar-3009/DBMS-Course/issues" target="_blank">Report Issue</a></li>
-      </ul>
-    </div>
+<footer class="site-footer">
+  <div class="footer-brand">DBMS Illustrated</div>
+  <p class="footer-sub">A free, animated, original course on database management systems. 12 topics. Zero dependencies.</p>
+  <div class="footer-links">
+    <a href="topics/01-intro.html">Start Here</a>
+    <a href="topics/06-indexing.html">Indexing</a>
+    <a href="topics/05-transactions.html">Transactions</a>
+    <a href="topics/11-distributed-databases.html">Distributed DBs</a>
+    <a href="topics/12-interview-guide.html">Interview Guide</a>
+    <a href="https://github.com/sridhar-3009/DBMS-Course" target="_blank">GitHub</a>
   </div>
-  <div class="footer-bottom">
-    <span>© 2024 DBMS Illustrated — Open Source</span>
-    <span>Run locally: <code style="font-family:monospace;background:var(--surface-3);padding:1px 6px;border-radius:4px;">python3 -m http.server 8080</code></span>
-  </div>
+  <p style="margin-top:1.4rem;font-size:0.8rem;color:var(--text-muted)">
+    Built with vanilla HTML, CSS, and JavaScript &mdash; no frameworks.
+    Run locally: <code>python3 -m http.server 8080</code>
+  </p>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>

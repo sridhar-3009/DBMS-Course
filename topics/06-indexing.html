@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Indexing — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#06B6D4}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -35,25 +35,36 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>B+tree index</strong>: all data in leaf nodes, linked for range scans. O(log n) point lookup, efficient range queries.</li>
+      <li><strong>Clustered index</strong>: table rows stored in index order. Only one per table. Range scans are fast.</li>
+      <li><strong>Covering index</strong>: index includes all columns needed by a query — avoids a table lookup entirely.</li>
+      <li><strong>Composite index</strong> column order matters: (A, B) helps filter on A alone, but not on B alone.</li>
+      <li>Indexes speed reads but slow writes — every insert/update/delete must maintain all indexes on the table.</li>
+    </ul>
+  </div>
+
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">🌲</div>
+      <div class="mini-card-icon"></div>
       <h4>B+Tree Index</h4>
       <p>Balanced tree with all data in leaf nodes. Internal nodes store keys for navigation. O(log n) search, O(log n) insert/delete. Leaf nodes linked for range scans.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🎯</div>
+      <div class="mini-card-icon"></div>
       <h4>Clustered vs Non-Clustered</h4>
       <p>Clustered: row data stored in B+tree leaf pages (InnoDB PK). One per table. Non-clustered: leaf pages store (key, PK pointer). Multiple allowed. Extra hop to data page.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🛡</div>
+      <div class="mini-card-icon"></div>
       <h4>Covering Index</h4>
       <p>Index contains all columns needed by a query — no "back to table" heap/clustered lookup needed. The index IS the query result. Massively reduces I/O.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">📏</div>
+      <div class="mini-card-icon"></div>
       <h4>Index Selectivity</h4>
       <p>Ratio of distinct values to total rows. High selectivity (e.g., user_id) → index worth using. Low selectivity (e.g., boolean) → full scan may be faster.</p>
     </div>
@@ -97,7 +108,7 @@
 
   <div class="demo-section" id="demo-index">
     <div class="demo-header">
-      <h3>🌲 B+Tree Index Search</h3>
+      <h3>B+Tree Index Search</h3>
       <div class="demo-controls">
         <input class="demo-input" type="number" data-action="index-search" value="42" min="1" max="99" style="width:80px;min-width:0;">
         <button class="demo-btn" data-action="search-btn" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">🔍 Search</button>
@@ -117,19 +128,19 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Indexing low-selectivity columns</h4>
+      <h4>Indexing low-selectivity columns</h4>
       <p>An index on a boolean column (true/false) with 50/50 distribution is rarely used — the planner will choose a full scan. Partial indexes on the rare value are effective: CREATE INDEX WHERE is_deleted = true.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Functions on indexed columns in WHERE</h4>
+      <h4>Functions on indexed columns in WHERE</h4>
       <p>WHERE LOWER(email) = 'alice@…' — the index on email is NOT used. Use a function-based index: CREATE INDEX ON users (LOWER(email)). Or store the normalized value in a separate column.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Over-indexing write-heavy tables</h4>
+      <h4>Over-indexing write-heavy tables</h4>
       <p>Each index on a table costs an extra B+tree update on every INSERT/UPDATE/DELETE. A table with 15 indexes can have 10× slower write throughput than an unindexed one. Index only what queries actually need.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Wrong column order in composite index</h4>
+      <h4>Wrong column order in composite index</h4>
       <p>Index on (status, created_at) serves queries filtering by status. Index on (created_at, status) serves range queries on created_at. Reversing these makes one query do a full scan. Lead with the equality column, follow with the range column.</p>
     </div>
   </div>
@@ -197,8 +208,8 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://use-the-index-luke.com/sql/anatomy" target="_blank">📖 B-Tree Anatomy (UTILU)</a>
-    <a class="reading-link" href="https://www.postgresql.org/docs/current/indexes.html" target="_blank">📖 PostgreSQL Index Types</a>
+    <a class="reading-link" href="https://use-the-index-luke.com/sql/anatomy" target="_blank">B-Tree Anatomy (UTILU)</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/indexes.html" target="_blank">PostgreSQL Index Types</a>
   </div>
 
   <div class="topic-nav">

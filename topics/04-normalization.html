@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Normalization — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#F59E0B}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
-    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -38,22 +38,22 @@
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">🔗</div>
+      <div class="mini-card-icon"></div>
       <h4>Functional Dependency</h4>
       <p>A → B means knowing A's value uniquely determines B's value. E.g., student_id → student_name. The foundation of all normal forms.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">1️⃣</div>
+      <div class="mini-card-icon"></div>
       <h4>1NF — Atomic Values</h4>
       <p>All attribute values must be atomic (indivisible). No multi-valued attributes (comma-separated lists), no repeating groups, each row uniquely identifiable.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">2️⃣</div>
+      <div class="mini-card-icon"></div>
       <h4>2NF — No Partial Dependencies</h4>
       <p>Every non-key attribute must depend on the WHOLE primary key. Applies when PK is composite. Split tables so each non-key column depends on the full PK.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">3️⃣</div>
+      <div class="mini-card-icon"></div>
       <h4>3NF / BCNF — No Transitive Deps</h4>
       <p>No non-key attribute should depend on another non-key attribute. BCNF is stricter: every functional dependency X→Y must have X as a superkey.</p>
     </div>
@@ -99,6 +99,17 @@
 );</pre>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>1NF</strong>: atomic values, no repeating groups. Every cell holds a single value.</li>
+      <li><strong>2NF</strong>: no partial dependency — non-key columns depend on the <em>whole</em> primary key (only matters with composite keys).</li>
+      <li><strong>3NF</strong>: no transitive dependency — non-key columns depend only on the key, not on other non-key columns.</li>
+      <li><strong>BCNF</strong>: stricter than 3NF — every determinant is a candidate key. Eliminates all anomalies.</li>
+      <li>Denormalization is a deliberate performance trade-off, not a mistake — but start normalized.</li>
+    </ul>
+  </div>
+
   <!-- Demo -->
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">Normalization Animator</h2>
@@ -106,7 +117,7 @@
 
   <div class="demo-section" id="demo-normalization">
     <div class="demo-header">
-      <h3>🔧 Normalization Steps</h3>
+      <h3>Normalization Steps</h3>
       <div class="demo-controls">
         <button class="demo-btn" data-action="next-norm">Next Step →</button>
         <button class="demo-btn" data-action="reset-norm">↩ Reset</button>
@@ -127,15 +138,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Storing comma-separated values in a single column</h4>
+      <h4>Storing comma-separated values in a single column</h4>
       <p>tags = "sql,database,postgres" violates 1NF. Can't index individual values, can't enforce FK constraints, string parsing in queries is error-prone and slow.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Denormalizing "for performance" without profiling first</h4>
+      <h4>Denormalizing "for performance" without profiling first</h4>
       <p>Redundancy creates update anomalies: update customer's city in 10,000 order rows vs 1 customer row. The JOIN is usually fast enough; the update anomaly is always costly.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Over-normalizing OLAP schemas</h4>
+      <h4>Over-normalizing OLAP schemas</h4>
       <p>Pushing to 6NF in reporting databases means dozens of JOINs per analytical query. Snowflake schemas over-normalized hurt BI tool performance. Dimension tables are intentionally denormalized in star schemas.</p>
     </div>
   </div>
@@ -203,8 +214,8 @@
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.studocu.com/en-us/document/university-of-illinois-at-urbana-champaign/database-systems/normalization" target="_blank">📖 Normal Forms Reference</a>
-    <a class="reading-link" href="https://www.youtube.com/watch?v=GFQaEYEc8_8" target="_blank">🎓 1NF 2NF 3NF BCNF (YouTube)</a>
+    <a class="reading-link" href="https://www.studocu.com/en-us/document/university-of-illinois-at-urbana-champaign/database-systems/normalization" target="_blank">Normal Forms Reference</a>
+    <a class="reading-link" href="https://www.youtube.com/watch?v=GFQaEYEc8_8" target="_blank">1NF 2NF 3NF BCNF (YouTube)</a>
   </div>
 
   <div class="topic-nav">

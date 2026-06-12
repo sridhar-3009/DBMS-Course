@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>try{var t=localStorage.getItem("dbms-theme")||"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
   <title>Introduction to DBMS — DBMS Illustrated</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <style>:root{--topic-color:#0EA5E9}</style>
 </head>
 <body>
+<div class="reading-progress" id="reading-progress"></div>
 <nav class="navbar">
   <div class="navbar-inner">
-    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon" style="color:var(--primary-soft)">&#9670;</span>DBMS Illustrated</a>
     <div class="navbar-links">
       <a href="../index.html#topics">All Topics</a>
     </div>
     <div class="navbar-actions">
-      <button class="btn-icon" id="theme-toggle">☀️</button>
+      <button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button>
     </div>
   </div>
 </nav>
-<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -40,26 +40,37 @@
     </div>
   </div>
 
+  <div class="at-a-glance reveal">
+    <h3>At a Glance</h3>
+    <ul>
+      <li><strong>DBMS</strong> adds data independence, integrity, concurrency control, and recovery on top of raw file storage.</li>
+      <li><strong>Three-schema architecture</strong>: External (views) / Conceptual (logical) / Internal (physical) — changes at one level don't ripple to others.</li>
+      <li><strong>ACID</strong> (Atomicity, Consistency, Isolation, Durability) — the four correctness guarantees for transactions.</li>
+      <li><strong>Query pipeline</strong>: Parse → Optimize → Execute → Buffer Manager → Disk I/O.</li>
+      <li><strong>Write-Ahead Logging (WAL)</strong> ensures durability: log first, flush later.</li>
+    </ul>
+  </div>
+
   <!-- Concepts -->
   <div class="section-label">Core Concepts</div>
   <div class="mini-cards">
     <div class="mini-card">
-      <div class="mini-card-icon">🗂</div>
+      <div class="mini-card-icon"></div>
       <h4>Data Independence</h4>
       <p>Physical independence: change storage without touching app logic. Logical independence: restructure schema without rewriting queries.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🔒</div>
+      <div class="mini-card-icon"></div>
       <h4>ACID Properties</h4>
       <p>Atomicity, Consistency, Isolation, Durability — the four guarantees that make transactions reliable in multi-user environments.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">🏗</div>
+      <div class="mini-card-icon"></div>
       <h4>Three-Schema Architecture</h4>
       <p>External (views), Conceptual (logical schema), Internal (physical storage) — three levels of abstraction that isolate users from hardware.</p>
     </div>
     <div class="mini-card">
-      <div class="mini-card-icon">👥</div>
+      <div class="mini-card-icon"></div>
       <h4>Concurrency Control</h4>
       <p>Multiple users reading and writing simultaneously without corrupting data. The DBMS serializes conflicting operations transparently.</p>
     </div>
@@ -131,7 +142,7 @@
 
   <div class="demo-section" id="demo-intro">
     <div class="demo-header">
-      <h3>🗺 Entity-Relationship Diagram</h3>
+      <h3>Entity-Relationship Diagram</h3>
       <div class="demo-controls">
         <span style="font-size:.78rem;color:var(--text-muted)">Click entity to explore</span>
       </div>
@@ -144,15 +155,15 @@
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>⚠ Using flat files instead of a DBMS</h4>
+      <h4>Using flat files instead of a DBMS</h4>
       <p>CSV files have no atomicity, no query language, no concurrent access control, and no recovery. Fine for scripts; catastrophic for production data.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Ignoring normalization from day one</h4>
+      <h4>Ignoring normalization from day one</h4>
       <p>Denormalized schemas feel easy initially but create update anomalies, data redundancy, and painful migrations as the application grows.</p>
     </div>
     <div class="antipattern">
-      <h4>⚠ Treating the DBMS as a dumb storage layer</h4>
+      <h4>Treating the DBMS as a dumb storage layer</h4>
       <p>Not using constraints (FK, NOT NULL, CHECK) shifts validation to application code — the worst of both worlds and much harder to enforce consistently.</p>
     </div>
   </div>
@@ -225,9 +236,9 @@
   <!-- Further Reading -->
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.postgresql.org/docs/current/tutorial.html" target="_blank">📖 PostgreSQL Official Tutorial</a>
-    <a class="reading-link" href="https://use-the-index-luke.com/" target="_blank">📖 Use The Index, Luke</a>
-    <a class="reading-link" href="https://db.cs.cmu.edu/courses/" target="_blank">🎓 CMU Database Courses</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/tutorial.html" target="_blank">PostgreSQL Official Tutorial</a>
+    <a class="reading-link" href="https://use-the-index-luke.com/" target="_blank">Use The Index, Luke</a>
+    <a class="reading-link" href="https://db.cs.cmu.edu/courses/" target="_blank">CMU Database Courses</a>
   </div>
 
   <!-- Nav -->
@@ -240,11 +251,8 @@
   </div>
 </div>
 
-<footer>
-  <div class="footer-bottom" style="max-width:1100px;margin:0 auto;padding:16px 24px;font-size:.78rem;color:var(--text-muted);">
-    <a href="../index.html">← Back to Course</a>
-    <span>DBMS Illustrated — Open Source</span>
-  </div>
+<footer class="site-footer" style="margin-top:0">
+  <p class="footer-sub"><a href="../index.html" style="color:var(--primary-soft)">Back to Course</a> &mdash; DBMS Illustrated</p>
 </footer>
 
 <script src="../js/main.js"></script>
