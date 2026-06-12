@@ -519,7 +519,7 @@ function initNormalizationDemo(container) {
       ctx.strokeRect(x,ry,maxW,RH-1);
       row.forEach((cell,ci)=>{
         const isIssue = table.issues && table.issues.includes(ci);
-        ctx.fillStyle=isIssue?'#EF4444':TC().soft; ctx.font=(isIssue?'bold ':')+'9.5px Inter';
+        ctx.fillStyle=isIssue?'#EF4444':TC().soft; ctx.font=(isIssue?'bold ':'')+'9.5px Inter';
         ctx.textAlign='center'; ctx.textBaseline='middle';
         const txt=String(cell).length>14?String(cell).slice(0,13)+'…':String(cell);
         ctx.fillText(txt,x+ci*cw+cw/2,ry+RH/2);
@@ -1335,7 +1335,7 @@ function initDistributedDemo(container) {
     // Crown
     if(n.role==='leader'){
       ctx.fillStyle='#F59E0B'; ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('👑',n.x,n.y-r-10);
+      ctx.fillText('*',n.x,n.y-r-10);
     }
     // Node label
     ctx.fillStyle=n.alive?TC().text:TC().muted; ctx.font='bold 10px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle';

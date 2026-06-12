@@ -16,7 +16,6 @@
     <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -27,7 +26,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 12</div>
     <h1>DBMS <span class="accent">Interview Guide</span></h1>
-    <p class="subtitle">Schema design patterns, system design Q&A, common gotchas, and a drag-and-drop schema builder to practice design questions before your interview.</p>
+    <p class="subtitle">Schema design patterns, system design Q&amp;A, common gotchas, and a drag-and-drop schema builder to practice design questions before your interview.</p>
     <div class="company-badges">
       <span class="badge">Google</span><span class="badge">Meta</span><span class="badge">Amazon</span>
       <span class="badge">Microsoft</span><span class="badge">Stripe</span><span class="badge">Airbnb</span>
@@ -39,104 +38,132 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Clarify First</h4>
-      <p>Before designing: ask read/write ratio, scale (QPS, data volume), consistency requirements, latency SLA, and whether schema is fixed or flexible. Design decisions follow from answers.</p>
+      <p>Before designing: ask read/write ratio, scale (QPS, data volume), consistency requirements, latency SLA, and whether schema is fixed or flexible. Every design decision flows from these answers.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Start Normalized</h4>
-      <p>Begin with 3NF — show the clean relational model. Then discuss denormalization trade-offs based on stated access patterns. Never start with a denormalized schema.</p>
+      <p>Begin with 3NF — show the clean relational model. Then discuss denormalization trade-offs based on stated access patterns. Never start with a denormalized schema; start clean and justify each deviation.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
-      <h4>Scale Discussion</h4>
-      <p>Indexing strategy first. Then read replicas. Then sharding (which key, range vs hash). Then caching layer (Redis). Show the scaling progression, not just the final state.</p>
+      <h4>Scale Progression</h4>
+      <p>Indexing strategy first. Then read replicas. Then sharding (which key, range vs hash). Then caching layer (Redis). Show the scaling progression explicitly — interviewers want to see incremental reasoning.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Name the Trade-offs</h4>
-      <p>Every design choice has a cost. Denormalization → update anomalies. Eventual consistency → stale reads. More indexes → write amplification. Examiners want to hear the trade-offs explicitly.</p>
+      <p>Every design choice has a cost. Denormalization causes update anomalies. Eventual consistency allows stale reads. More indexes slow writes. Interviewers explicitly want to hear trade-offs stated out loud.</p>
     </div>
   </div>
 
   <div class="section-label">Classic Design Patterns</div>
-  <h2 class="section-title">How It Works</h2>
+  <h2 class="section-title">Worked Examples</h2>
   <div class="steps">
     <div class="step-item">
       <div class="step-num">1</div>
       <div>
         <h4>URL Shortener Schema</h4>
-        <p>Core table: <code>links(id BIGINT PK, short_code VARCHAR(8) UNIQUE INDEX, original_url TEXT, user_id FK, created_at, click_count)</code>. Bottleneck: read-heavy (300:1 read/write). Add Redis cache on short_code → original_url. Shard by hash(short_code). Click counting: batch writes to avoid hot-row contention.</p>
+        <p>Core table: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">links(id BIGINT PK, short_code VARCHAR(8) UNIQUE, original_url TEXT, user_id FK, created_at, expires_at, click_count)</code>. Bottleneck: read-heavy (300:1 read/write). Add Redis cache on short_code &rarr; original_url. Shard by hash(short_code). Click counting: batch writes or Redis INCR to avoid hot-row contention. Short code generation: base62(auto_increment) or collision-checked random hash.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
         <h4>Social Media Feed Schema</h4>
-        <p>Posts table + Follows table. Fan-out options: pull model (query all followed users' posts on load — slow), push model (write to each follower's feed on post — expensive for celebrities). Hybrid: push for normal users, pull for influencers. Denormalize post author data into feed for single-query reads.</p>
+        <p>Posts table + Follows table. Fan-out options: pull model (query all followed users' posts on load — slow for high-follow accounts), push model (write to each follower's feed on post — expensive for celebrities with millions of followers). Hybrid: push for normal users, pull for influencers. Denormalize post author data into the feed table for single-query reads. Shard feed by user_id.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
         <h4>E-commerce Inventory Schema</h4>
-        <p>products(id, name, price) + inventory(product_id, warehouse_id, quantity). Inventory decrements need <code>FOR UPDATE</code> + optimistic locking to prevent overselling. Separate reservations table for cart items. Eventual decrement after payment confirmation.</p>
+        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">products(id, name, price)</code> + <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">inventory(product_id, warehouse_id, quantity)</code>. Inventory decrements need <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">FOR UPDATE</code> + optimistic locking to prevent overselling. Separate reservations table for cart items. Eventual decrement after payment confirmation. Prevent negative inventory with <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">CHECK (quantity &gt;= 0)</code>.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Chat Application Schema</h4>
-        <p>conversations(id, created_at) + messages(id, conv_id FK, sender_id FK, content, sent_at INDEX). Shard by conversation_id — all messages in a conversation stay together. Use timeseries optimization: partition messages table by month. For ordering guarantees, sent_at + UUID as composite sort key (clock skew resistant).</p>
+        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">conversations(id, created_at)</code> + <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">messages(id, conv_id FK, sender_id FK, content, sent_at INDEX)</code>. Shard by conversation_id — all messages in a conversation stay together on one shard for fast retrieval. Partition messages table by month for time-range queries. For ordering guarantees: sent_at + UUID as composite sort key (clock skew resistant).</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">5</div>
       <div>
         <h4>Ride-sharing Schema</h4>
-        <p>drivers(id, status, location), rides(id, driver_id, rider_id, status, pickup, dropoff, price). Geospatial index (PostGIS, H3 hexagons) for nearby driver queries. Hot spot on status='available' filter — partial index. Real-time location: separate Redis geo hash, not in the RDBMS.</p>
+        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">drivers(id, status, location)</code>, <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">rides(id, driver_id, rider_id, status, pickup, dropoff, price)</code>. Geospatial index (PostGIS, H3 hexagons) for nearby driver queries. Hot spot on status='available' filter — partial index. Real-time location: separate Redis geo hash, not in the RDBMS (too many writes, RDBMS cannot keep up).</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">6</div>
+      <div>
+        <h4>Hotel/Flight Booking Schema</h4>
+        <p><code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">rooms(id, hotel_id, type, base_price)</code> + <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">bookings(id, room_id, user_id, check_in, check_out, status)</code>. Availability query: find rooms with no overlapping booking. Index on (room_id, check_in, check_out). Use <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">SELECT ... FOR UPDATE</code> to prevent double-booking. Rate limiting at the application layer to prevent seat fights. Two-phase commit if inventory is distributed across services.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">7</div>
+      <div>
+        <h4>Payment / Transaction Ledger Schema</h4>
+        <p>Immutable ledger: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">transactions(id, from_account_id, to_account_id, amount, created_at, idempotency_key UNIQUE)</code>. Never UPDATE or DELETE ledger rows — insert only. Balance computed as SUM of credits minus debits, or materialized as a separate <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">account_balances</code> table updated atomically. Idempotency key prevents duplicate charges on retry. Separate <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">payment_intents</code> table tracks in-flight payment state machine.</p>
       </div>
     </div>
   </div>
 
   <div class="code-block">
     <div class="cb-header"><span class="cb-lang">SQL — Interview-Ready Patterns</span></div>
-    <pre><span class="cmt">-- Pattern: Optimistic locking with version column</span>
+    <pre><span class="cmt">Pattern 1: Optimistic locking with version column (prevents overselling)</span>
 <span class="kw">UPDATE</span> inventory
 <span class="kw">SET</span>    quantity = quantity - <span class="num">1</span>,
        version  = version  + <span class="num">1</span>
 <span class="kw">WHERE</span>  product_id = <span class="num">42</span>
-  <span class="kw">AND</span>  version    = :expected_version  <span class="cmt">-- fails if concurrent update happened</span>
-  <span class="kw">AND</span>  quantity   > <span class="num">0</span>;               <span class="cmt">-- prevent negative inventory</span>
-<span class="cmt">-- Check rows affected; if 0 → retry</span>
+  <span class="kw">AND</span>  version    = :expected_version
+  <span class="kw">AND</span>  quantity   > <span class="num">0</span>;
+<span class="cmt">-- Check rows affected; if 0: concurrent update happened, retry</span>
 
-<span class="cmt">-- Pattern: Soft delete with audit trail</span>
+<span class="cmt">Pattern 2: Soft delete with audit trail + partial index</span>
 <span class="kw">ALTER TABLE</span> orders <span class="kw">ADD COLUMN</span> deleted_at <span class="fn">TIMESTAMPTZ</span>;
 <span class="kw">CREATE INDEX</span> idx_orders_active <span class="kw">ON</span> orders (user_id)
-  <span class="kw">WHERE</span> deleted_at <span class="kw">IS NULL</span>;           <span class="cmt">-- partial index: only active orders</span>
+  <span class="kw">WHERE</span> deleted_at <span class="kw">IS NULL</span>;  <span class="cmt">only active orders in the index</span>
 
-<span class="cmt">-- Pattern: Polymorphic association (content table for comments)</span>
+<span class="cmt">Pattern 3: Idempotency key for safe retries</span>
+<span class="kw">INSERT INTO</span> transactions
+  (id, from_account, to_account, amount, idempotency_key)
+<span class="kw">VALUES</span> (<span class="fn">gen_random_uuid</span>(), <span class="num">1</span>, <span class="num">2</span>, <span class="num">100.00</span>, :client_key)
+<span class="kw">ON CONFLICT</span> (idempotency_key) <span class="kw">DO NOTHING</span>;
+<span class="cmt">-- Safe to retry on network timeout — duplicate becomes no-op</span>
+
+<span class="cmt">Pattern 4: Booking availability check (prevent double-book)</span>
+<span class="kw">SELECT</span> <span class="num">1</span> <span class="kw">FROM</span> bookings
+<span class="kw">WHERE</span>  room_id   = :room_id
+  <span class="kw">AND</span>  status   != <span class="str">'cancelled'</span>
+  <span class="kw">AND</span>  check_in  < :requested_checkout
+  <span class="kw">AND</span>  check_out > :requested_checkin
+<span class="kw">FOR UPDATE</span>;  <span class="cmt">lock conflicting rows, prevents race condition</span>
+
+<span class="cmt">Pattern 5: Polymorphic comments table</span>
 <span class="kw">CREATE TABLE</span> comments (
-  id            <span class="fn">BIGSERIAL</span> <span class="kw">PRIMARY KEY</span>,
-  commentable_type <span class="fn">VARCHAR</span>(<span class="num">50</span>),      <span class="cmt">-- 'Post', 'Product', 'Video'</span>
+  id               <span class="fn">BIGSERIAL</span> <span class="kw">PRIMARY KEY</span>,
+  commentable_type <span class="fn">VARCHAR</span>(<span class="num">50</span>), <span class="cmt">'Post', 'Product', 'Video'</span>
   commentable_id   <span class="fn">BIGINT</span>,
-  body          <span class="fn">TEXT</span>,
-  created_at    <span class="fn">TIMESTAMPTZ</span> <span class="kw">DEFAULT</span> now(),
-  <span class="kw">INDEX</span>         (commentable_type, commentable_id)
-);</pre>
+  body             <span class="fn">TEXT</span>,
+  created_at       <span class="fn">TIMESTAMPTZ</span> <span class="kw">DEFAULT</span> now()
+);
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> comments (commentable_type, commentable_id);</pre>
   </div>
 
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>Always clarify first</strong>: read/write ratio, scale, consistency requirements, latency SLA, and access patterns before designing.</li>
-      <li><strong>Start normalized</strong>: 3NF first, then denormalize based on stated access patterns.</li>
-      <li><strong>Scale progression</strong>: indexes first, then read replicas, then sharding, then caching layer.</li>
-      <li><strong>Name trade-offs</strong>: denormalization causes update anomalies; eventual consistency allows stale reads; more indexes slow writes.</li>
-      <li><strong>N+1 problem</strong>: 1 query for parents + N queries for children. Fix with JOIN, eager loading, or batched IN() queries.</li>
+      <li><strong>Always clarify first</strong> — read/write ratio, scale, consistency requirements, latency SLA, and access patterns before designing.</li>
+      <li><strong>Start normalized</strong> — 3NF first, then denormalize based on stated access patterns with explicit trade-off discussion.</li>
+      <li><strong>Scale progression</strong> — indexes first, then read replicas, then sharding, then caching layer.</li>
+      <li><strong>Name trade-offs</strong> — denormalization causes update anomalies; eventual consistency allows stale reads; more indexes slow writes.</li>
+      <li><strong>Idempotency keys</strong> — essential for payment and reservation APIs to handle retries safely without duplicate side effects.</li>
     </ul>
   </div>
 
-  <!-- Schema Designer Demo -->
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">Schema Designer</h2>
   <p class="section-desc">Drag tables to arrange them. Click "Add Table" to create a new one. Click "Export SQL" to generate CREATE TABLE statements — useful for practicing design interviews.</p>
@@ -145,51 +172,97 @@
     <div class="demo-header">
       <h3>Schema Builder</h3>
       <div class="demo-controls">
-        <button class="demo-btn" data-action="add-table">+ Add Table</button>
-        <button class="demo-btn" data-action="export-sql" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">⬇ Export SQL</button>
+        <button class="demo-btn" data-action="add-table">Add Table</button>
+        <button class="demo-btn" data-action="export-sql" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">Export SQL</button>
       </div>
     </div>
     <div class="demo-canvas-wrap" style="height:420px;align-items:flex-start;"></div>
     <div class="demo-hint">Drag table headers to move. Yellow dashed lines = FK relationships. PK = primary key column (gold).</div>
   </div>
 
-  <!-- SQL Export Modal -->
   <div class="modal-overlay" id="sql-modal">
     <div class="modal">
       <div class="modal-header">
         <h3>Generated SQL</h3>
-        <button class="modal-close" onclick="document.getElementById('sql-modal').classList.remove('open')">✕</button>
+        <button class="modal-close" onclick="document.getElementById('sql-modal').classList.remove('open')">x</button>
       </div>
       <pre id="sql-output"></pre>
     </div>
   </div>
 
-  <!-- Anti-patterns -->
+  <div class="section-label">Checklist</div>
+  <h2 class="section-title">Before You Submit Your Design</h2>
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <h4>Schema Completeness</h4>
+      <ul>
+        <li>Every table has created_at and updated_at</li>
+        <li>Primary keys are non-nullable surrogate keys</li>
+        <li>Foreign key constraints declared</li>
+        <li>Status fields use CHECK constraints</li>
+        <li>Indexes on all FK columns</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Scaling Readiness</h4>
+      <ul>
+        <li>Read-heavy: read replicas + cache layer specified</li>
+        <li>Write-heavy: shard key identified, no global hotspot</li>
+        <li>Pagination: keyset not OFFSET for large tables</li>
+        <li>Counter columns: batched updates or Redis</li>
+        <li>Blob/media: object store reference, not inline</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Consistency</h4>
+      <ul>
+        <li>Concurrent writes: optimistic or pessimistic locking</li>
+        <li>Idempotency keys on payment/booking APIs</li>
+        <li>Soft delete for auditable records</li>
+        <li>Immutable ledger for financial transactions</li>
+        <li>Two-phase commit if crossing service boundaries</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Operational</h4>
+      <ul>
+        <li>Partition large tables by time or tenant</li>
+        <li>Archiving strategy for historical data</li>
+        <li>Backup and PITR plan stated</li>
+        <li>Monitoring: slow query log, buffer hit rate</li>
+        <li>Migration plan for schema changes at scale</li>
+      </ul>
+    </div>
+  </div>
+
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
       <h4>Designing without asking about access patterns</h4>
-      <p>Schema design is driven by how data is read and written. The same data can have radically different optimal schemas for a read-heavy vs write-heavy workload. Always ask before designing.</p>
+      <p>Schema design is driven by how data is read and written. The same data can have radically different optimal schemas for read-heavy vs write-heavy workloads. Always ask before designing — an interviewer who gives you a vague problem is testing whether you clarify.</p>
     </div>
     <div class="antipattern">
       <h4>Storing everything in one giant table</h4>
-      <p>"God table" with 100+ columns, most NULL for any given row type. Discriminator columns ("type"), sparse columns, and huge row sizes kill performance and readability. Use inheritance or polymorphic patterns properly.</p>
+      <p>"God table" with 100+ columns, most NULL for any given row type. Discriminator columns, sparse columns, and huge row sizes kill performance and readability. Use proper inheritance or polymorphic patterns instead.</p>
     </div>
     <div class="antipattern">
       <h4>Forgetting created_at / updated_at on every table</h4>
-      <p>You will always eventually need to know when a row was created or modified for debugging, auditing, and incremental sync. Add these to every table from day one.</p>
+      <p>You will always eventually need to know when a row was created or modified for debugging, auditing, and incremental sync. Add these to every table from day one — retrofitting them onto a live 100M-row table is painful.</p>
     </div>
     <div class="antipattern">
       <h4>Using VARCHAR(255) everywhere</h4>
-      <p>Picking 255 "because it fits" prevents the database from making good storage and statistics decisions. Use the actual expected max length. For names: VARCHAR(100). For emails: VARCHAR(254). For URLs: TEXT.</p>
+      <p>Picking 255 "because it fits" prevents the database from making good storage and statistics decisions. Use the actual expected max length. For names: VARCHAR(100). For emails: VARCHAR(254). For URLs: TEXT. For phone numbers: VARCHAR(20).</p>
+    </div>
+    <div class="antipattern">
+      <h4>Ignoring the N+1 problem in schema design</h4>
+      <p>Designing a schema that requires loading a list then fetching related data per item creates N+1 queries. Design for co-location: data that is always read together should live together or have indexes that make single-query fetches efficient.</p>
     </div>
   </div>
 
-  <!-- Quiz -->
   <div class="section-label">Quiz</div>
   <div class="quiz-section">
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-num">Question 1 of 5</div>
       <div class="quiz-q-text">When designing a URL shortener schema, the primary performance bottleneck is usually:</div>
       <div class="quiz-options">
         <div class="quiz-option" data-correct="false" data-explanation="URL shorteners are not CPU-bound; the bottleneck is I/O for lookups."><span class="opt-letter">A</span>CPU usage for encoding/decoding</div>
@@ -200,55 +273,87 @@
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-num">Question 2 of 5</div>
       <div class="quiz-q-text">For a chat application, which database property matters most for message ordering?</div>
       <div class="quiz-options">
-        <div class="quiz-option" data-correct="false" data-explanation="High availability is important but doesn't ensure message ordering."><span class="opt-letter">A</span>High availability for 99.99% uptime</div>
-        <div class="quiz-option" data-correct="false" data-explanation="Partition tolerance is required but doesn't address ordering."><span class="opt-letter">B</span>Partition tolerance across data centers</div>
+        <div class="quiz-option" data-correct="false" data-explanation="High availability is important but does not ensure message ordering."><span class="opt-letter">A</span>High availability for 99.99% uptime</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Partition tolerance is required but does not address ordering."><span class="opt-letter">B</span>Partition tolerance across data centers</div>
         <div class="quiz-option" data-correct="true" data-explanation="Message ordering in a conversation must be consistent — users must see messages in the order they were sent. This requires strong ordering guarantees within a conversation shard."><span class="opt-letter">C</span>Strong ordering/consistency within a conversation</div>
         <div class="quiz-option" data-correct="false" data-explanation="Schema flexibility is irrelevant to message ordering."><span class="opt-letter">D</span>Schema flexibility for different message types</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-num">Question 3 of 5</div>
       <div class="quiz-q-text">Vertical partitioning (as opposed to horizontal/sharding) splits data by:</div>
       <div class="quiz-options">
         <div class="quiz-option" data-correct="false" data-explanation="Splitting by row ranges is horizontal partitioning (range sharding)."><span class="opt-letter">A</span>Row ranges (e.g., rows 1–1M on shard 1)</div>
         <div class="quiz-option" data-correct="false" data-explanation="Hashing the primary key is consistent/hash sharding — horizontal."><span class="opt-letter">B</span>Hash of the primary key value</div>
-        <div class="quiz-option" data-correct="true" data-explanation="Vertical partitioning splits a table by columns — e.g., keep frequently accessed columns in one table, large BLOBs/rarely accessed columns in another. Reduces row size and improves cache efficiency."><span class="opt-letter">C</span>Columns — frequently accessed columns in one table, large/rarely used in another</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Vertical partitioning splits a table by columns — keep frequently accessed columns in one table, large BLOBs/rarely accessed columns in another. Reduces row size and improves cache efficiency."><span class="opt-letter">C</span>Columns — frequently accessed columns in one table, large/rarely used in another</div>
         <div class="quiz-option" data-correct="false" data-explanation="Splitting by time periods is a form of horizontal/range partitioning."><span class="opt-letter">D</span>Time periods (e.g., each month in a separate partition)</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 4 of 5</div>
+      <div class="quiz-q-text">An idempotency key in a payment API is used to:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Idempotency keys prevent duplicate charges — they are not primarily for security encryption."><span class="opt-letter">A</span>Encrypt the payment amount for security</div>
+        <div class="quiz-option" data-correct="true" data-explanation="An idempotency key is a client-provided unique token stored in the database. If the same key is submitted again (network retry), the server returns the original result without creating a duplicate charge."><span class="opt-letter">B</span>Allow safe retries — duplicate submissions with the same key produce no duplicate side effect</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Idempotency keys deduplicate retries, not improve throughput."><span class="opt-letter">C</span>Improve write throughput by batching transactions</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Authorization tokens are for auth; idempotency keys are for deduplication."><span class="opt-letter">D</span>Authorize the payment with the card network</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 5 of 5</div>
+      <div class="quiz-q-text">What is the fan-out-on-write approach for social media feeds?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Fan-out-on-read queries followed users' posts at read time — the opposite of fan-out-on-write."><span class="opt-letter">A</span>Query all followed users' posts at feed load time</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Fan-out-on-write (push model): when a user posts, immediately write that post to each follower's feed. Reads are instant (just read your personal feed). Expensive for users with millions of followers."><span class="opt-letter">B</span>Write to each follower's feed immediately when a post is created</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Caching is orthogonal to the fan-out strategy."><span class="opt-letter">C</span>Cache the global post stream in Redis</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Sharding is a separate concern from the fan-out strategy."><span class="opt-letter">D</span>Shard posts by user_id across multiple databases</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
   </div>
 
-  <!-- Q&A -->
   <div class="section-label">Interview Q&A</div>
   <div class="qa-section">
     <div class="qa-item">
       <div class="qa-q">Walk me through designing a database for a URL shortener.<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner"><strong>Clarify:</strong> Expected QPS? Link expiry? Analytics? Auth? ~1B links, 100K redirects/sec, analytics needed. <strong>Core schema:</strong> <code>links(id BIGINT PK, short_code CHAR(8) UNIQUE, long_url TEXT, user_id INT, created_at TIMESTAMPTZ, expires_at TIMESTAMPTZ, is_active BOOL)</code>. <code>clicks(id BIGINT, link_id INT, ip TEXT, user_agent TEXT, clicked_at TIMESTAMPTZ)</code> — partitioned by month. <strong>Index:</strong> unique index on short_code. Partial index WHERE is_active=true. <strong>Scale:</strong> Redis cache for short_code→long_url (LRU, 24h TTL handles 99% of traffic). Read replicas for remaining DB reads. Shard links by hash(short_code). Click analytics: batch-write to Kafka → aggregate to ClickHouse. <strong>Short code generation:</strong> base62(auto_increment) or hash, collision-check on insert.</div></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Clarify:</strong> Expected QPS? Link expiry? Analytics? Auth? ~1B links, 100K redirects/sec, analytics needed. <strong>Core schema:</strong> <code>links(id BIGINT PK, short_code CHAR(8) UNIQUE, long_url TEXT, user_id INT, created_at, expires_at, is_active BOOL)</code>; <code>clicks(id BIGINT, link_id INT, ip TEXT, user_agent TEXT, clicked_at) PARTITIONED BY MONTH</code>. <strong>Index:</strong> unique index on short_code; partial index WHERE is_active=true. <strong>Scale:</strong> Redis cache for short_code&rarr;long_url (LRU, 24h TTL handles 99% of traffic). Read replicas for remaining DB reads. Shard links by hash(short_code). Click analytics: batch-write to Kafka &rarr; aggregate to ClickHouse. <strong>Short code generation:</strong> base62(auto_increment) or hash, collision-check on insert.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">What questions should you ask before designing a schema?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">1. <strong>Read/write ratio</strong>: 10:1? 1000:1? This drives caching and replica strategy. 2. <strong>Scale</strong>: rows per table, QPS, total data volume, growth rate. 3. <strong>Consistency requirements</strong>: can you tolerate stale reads? Eventually consistent analytics? Strongly consistent inventory? 4. <strong>Latency SLA</strong>: p99 under 10ms? Under 1s? 5. <strong>Access patterns</strong>: what are the top 3 most frequent queries? Will you filter by time range, user, status? 6. <strong>Schema stability</strong>: will structure change often? 7. <strong>Joins</strong>: what data is always read together? What's read independently? 8. <strong>Multi-tenancy</strong>: shared schema, separate schemas, or separate databases per tenant? 9. <strong>Compliance</strong>: PII fields, data residency requirements, audit logging?</div></div>
+      <div class="qa-a"><div class="qa-a-inner">1. <strong>Read/write ratio</strong> — 10:1? 1000:1? This drives caching and replica strategy. 2. <strong>Scale</strong> — rows per table, QPS, total data volume, growth rate. 3. <strong>Consistency requirements</strong> — can you tolerate stale reads? Eventual analytics? Strongly consistent inventory? 4. <strong>Latency SLA</strong> — p99 under 10ms? Under 1s? 5. <strong>Access patterns</strong> — what are the top 3 most frequent queries? Filter by time range, user, status? 6. <strong>Schema stability</strong> — will structure change often? 7. <strong>Joins</strong> — what data is always read together vs independently? 8. <strong>Multi-tenancy</strong> — shared schema, separate schemas, or separate DBs per tenant? 9. <strong>Compliance</strong> — PII fields, data residency requirements, audit logging?</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">How do you handle hot spots in a sharded database?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">Hot spots occur when a disproportionate fraction of traffic hits one shard. Solutions: (1) <strong>Shard key entropy</strong>: use UUID v4 or hash(user_id) instead of sequential IDs — distributes writes uniformly. (2) <strong>Compound shard keys</strong>: for a viral tweet — shard on (tweet_id % num_shards) with a random suffix to spread across sub-shards. (3) <strong>Caching hot rows</strong>: celebrity user profiles in Redis — DB only sees non-cached requests. (4) <strong>Read replicas for hot rows</strong>: route reads for popular data to multiple replicas. (5) <strong>Cell-based architecture</strong>: isolate celebrity accounts in dedicated cells. (6) <strong>Throttling</strong>: rate-limit writes to hot keys, batch counter updates (increment every N ms not every event). Twitter uses a "hot key" detector that auto-caches keys exceeding a threshold.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">Hot spots occur when a disproportionate fraction of traffic hits one shard. Solutions: (1) <strong>Shard key entropy</strong> — use UUID v4 or hash(user_id) instead of sequential IDs to distribute writes uniformly. (2) <strong>Compound shard keys</strong> — for viral content, shard on (post_id % num_shards) with a random suffix to spread across sub-shards. (3) <strong>Caching hot rows</strong> — celebrity user profiles in Redis so the DB only sees non-cached requests. (4) <strong>Read replicas for hot rows</strong> — route reads for popular data to multiple replicas. (5) <strong>Cell-based architecture</strong> — isolate celebrity accounts in dedicated cells. (6) <strong>Throttling</strong> — rate-limit writes to hot keys, batch counter updates.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">What is the N+1 query problem and how do you detect and fix it?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">N+1: fetch N parent rows (1 query), then for each parent, execute a separate query to get its children (N queries). Total: N+1 queries. Example: fetch 100 blog posts, then for each post fetch its author — 101 queries instead of 1 JOIN. <strong>Detection:</strong> ORM debug logging (Rails bullet gem, Django debug toolbar, SQLAlchemy echo=True). Look for many nearly-identical queries. <strong>Fixes:</strong> (1) JOIN the tables in one query. (2) ORM eager loading (<code>includes</code> in ActiveRecord, <code>prefetch_related</code> in Django, <code>joinedload</code> in SQLAlchemy). (3) Batch: fetch all parent IDs, then <code>WHERE parent_id IN (ids)</code> — 2 queries instead of N+1. (4) DataLoader pattern (GraphQL) — batches per request frame. Always check total query count in dev, not just individual query speed.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">N+1: fetch N parent rows (1 query), then for each parent execute a query to get its children (N queries). Total: N+1 queries. Example: fetch 100 blog posts, then for each post fetch its author — 101 queries instead of 1 JOIN. <strong>Detection:</strong> ORM debug logging (Rails bullet gem, Django debug toolbar, SQLAlchemy echo=True). Look for many nearly-identical queries. <strong>Fixes:</strong> (1) JOIN the tables in one query. (2) ORM eager loading (<code>includes</code> in ActiveRecord, <code>prefetch_related</code> in Django). (3) Batch: fetch all parent IDs, then <code>WHERE parent_id IN (ids)</code> — 2 queries instead of N+1. (4) DataLoader pattern (GraphQL) — batches per request frame.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">Design the schema for a social media "likes" system at scale.<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner"><strong>Naive:</strong> <code>likes(user_id, post_id, created_at, PRIMARY KEY(user_id, post_id))</code>. Works to ~100M rows. Problems at scale: (1) like count query <code>SELECT COUNT(*) WHERE post_id=X</code> is slow on large tables. (2) Viral post = hot partition. <strong>Scalable approach:</strong> store <code>post_like_count</code> as a denormalized counter on posts, increment/decrement atomically (<code>UPDATE posts SET like_count = like_count + 1</code>). For exact user-post checks, use Redis Sets: <code>SISMEMBER post:{id}:likes {user_id}</code> — O(1). Persist asynchronously to DB for durability. For ultra-scale: use HyperLogLog for approximate counts (LinkedIn), exact counts in Redis, DB as persistent backup. Shard likes table by post_id (all likes for a post on one shard → fast count, but viral posts still hot — cap with caching).</div></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Naive:</strong> <code>likes(user_id, post_id, created_at, PRIMARY KEY(user_id, post_id))</code>. Works to ~100M rows. Problems at scale: (1) COUNT(*) per post is slow; (2) viral post = hot partition. <strong>Scalable approach:</strong> Store <code>post_like_count</code> as a denormalized counter on posts, increment/decrement atomically. For exact user-post checks, use Redis Sets: <code>SISMEMBER post:{id}:likes {user_id}</code> — O(1). Persist asynchronously to DB for durability. For ultra-scale: HyperLogLog for approximate counts, exact counts in Redis, DB as persistent backup. Shard likes table by post_id for fast per-post queries but cap hot posts with caching.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How do you prevent double-booking in a reservation system?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">The core problem: two users book the same seat/room in the same time window concurrently. Solutions: (1) <strong>Pessimistic locking</strong> — SELECT ... FOR UPDATE on the resource row. Only one transaction proceeds; the other waits. Simple and safe; high contention for popular resources. (2) <strong>Optimistic locking with version column</strong> — check version at UPDATE time; retry on conflict. Better throughput for low-contention resources. (3) <strong>Status machine with reservation expiry</strong> — create a 'pending' reservation row that expires in 5 minutes; use UNIQUE constraints to prevent overlapping entries. Separate payment step confirms it. (4) <strong>Database-level constraint</strong> — PostgreSQL EXCLUDE USING GiST with tstzrange (daterange exclusion constraint) prevents overlapping time ranges at the DB layer without application-level locking.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is an immutable ledger pattern and when do you use it?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">An immutable ledger is a table where rows are only ever inserted, never updated or deleted. Each row represents an event: a debit, a credit, a state change. Balance = SUM(credits) - SUM(debits). Benefits: (1) Complete audit trail — you can reconstruct any historical state. (2) Safe concurrent writes — no read-modify-write conflicts; all writes are pure inserts. (3) Event sourcing compatibility — the ledger is the source of truth. Trade-off: balance queries require aggregation unless you materialize a balance table updated within the same transaction. Used for: financial ledgers, inventory changes, user point systems, audit logs. Examples: Stripe, banks, and accounting systems use this pattern universally.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">SQL vs NoSQL — how do you choose?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Choose SQL (PostgreSQL) when: strong consistency is required (financial transactions, inventory), your data is relational and JOIN-heavy, you need flexible ad-hoc queries, schema is relatively stable, team knows SQL well. Choose NoSQL when: (1) <strong>Document store (MongoDB)</strong> — schema varies significantly per document; frequent schema changes; hierarchical data stored and retrieved together. (2) <strong>Key-value (Redis)</strong> — sub-millisecond lookups, caching, sessions, leaderboards, pub/sub. (3) <strong>Wide-column (Cassandra)</strong> — massive write throughput, time-series, global distribution with multi-master. (4) <strong>Graph (Neo4j)</strong> — relationship traversal is the primary query pattern (social network, fraud detection). Default recommendation: start with PostgreSQL; it handles most use cases including JSONB document queries. Add Redis for caching. Switch NoSQL only when you hit a specific, measurable limitation.</div></div>
     </div>
   </div>
 
-  <!-- Further Reading -->
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
     <a class="reading-link" href="https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321" target="_blank">Designing Data-Intensive Applications (Kleppmann)</a>
@@ -257,14 +362,13 @@
     <a class="reading-link" href="https://www.hellointerview.com/learn/system-design/deep-dives/sql-vs-nosql" target="_blank">SQL vs NoSQL Deep Dive</a>
   </div>
 
-  <!-- Topic Nav -->
   <div class="topic-nav">
     <a href="11-distributed-databases.html" class="topic-nav-link">
       <div class="topic-nav-arrow">←</div>
       <div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Distributed Databases</div></div>
     </a>
     <a href="../index.html" class="topic-nav-link next">
-      <div class="topic-nav-arrow">🏠</div>
+      <div class="topic-nav-arrow">&#8962;</div>
       <div><div class="topic-nav-label">Done!</div><div class="topic-nav-title">Back to Course Home</div></div>
     </a>
   </div>
@@ -273,16 +377,12 @@
 <script src="../js/main.js"></script>
 <script src="../js/demos.js"></script>
 <script>
-// Wire modal close on overlay click
 document.getElementById('sql-modal')?.addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('open');
 });
-// Wire export SQL to show in modal
 document.querySelector('[data-action="export-sql"]')?.addEventListener('click', function() {
-  // The initInterviewDemo function handles this — just in case it needs modal wiring
   const modal = document.getElementById('sql-modal');
   if (modal && !modal.classList.contains('open')) {
-    // demo will fill #sql-output; just open
     setTimeout(() => modal.classList.add('open'), 50);
   }
 });

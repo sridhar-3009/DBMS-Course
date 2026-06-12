@@ -16,7 +16,6 @@
     <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -37,7 +36,7 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>CAP theorem</strong>: a distributed system can guarantee at most 2 of: Consistency, Availability, Partition tolerance.</li>
+      <li><strong>CAP theorem</strong>a distributed system can guarantee at most 2 of: Consistency, Availability, Partition tolerance.</li>
       <li><strong>Document DB</strong> (MongoDB): flexible schema, nested documents. Good for variable-structure data.</li>
       <li><strong>Wide-column DB</strong> (Cassandra): optimized for high-write, time-series workloads. No joins.</li>
       <li><strong>Key-value DB</strong> (Redis, DynamoDB): simplest data model, fastest reads, limited query power.</li>
@@ -75,11 +74,11 @@
     <div class="step-item"><div class="step-num">C</div><div><h4>Consistency</h4><p>Every read gets the most recent write. Requires synchronous replication or consensus before acknowledging writes. Examples: traditional RDBMS in single-node, Zookeeper, HBase.</p></div></div>
     <div class="step-item"><div class="step-num">A</div><div><h4>Availability</h4><p>Every request receives a response (success or failure) even during failures. No guarantee the response is the latest data. CouchDB, Cassandra (tunable), DynamoDB.</p></div></div>
     <div class="step-item"><div class="step-num">P</div><div><h4>Partition Tolerance</h4><p>System continues operating when network partitions split nodes. ALL distributed systems MUST tolerate partitions — P is not really a choice. Real choice: C vs A when partitioned.</p></div></div>
-    <div class="step-item"><div class="step-num">✦</div><div><h4>PACELC Extension</h4><p>When no partition (normal operation): choose between Latency and Consistency. DynamoDB: PA/EL. Spanner: PC/EC. This is more realistic than CAP for day-to-day tradeoffs.</p></div></div>
+    <div class="step-item"><div class="step-num">+</div><div><h4>PACELC Extension</h4><p>When no partition (normal operation): choose between Latency and Consistency. DynamoDB: PA/EL. Spanner: PC/EC. This is more realistic than CAP for day-to-day tradeoffs.</p></div></div>
   </div>
 
   <div class="table-wrap">
-    <table class="data-table">
+    <table class="compare-table">
       <thead><tr><th>Type</th><th>Examples</th><th>Data Model</th><th>Best For</th><th>Weak At</th></tr></thead>
       <tbody>
         <tr><td>Document</td><td>MongoDB, Couchbase</td><td>JSON/BSON docs</td><td>Flexible schemas, nested data</td><td>Multi-doc transactions, complex JOINs</td></tr>
@@ -89,6 +88,94 @@
         <tr><td>Search</td><td>Elasticsearch</td><td>Inverted index</td><td>Full-text search, logs, metrics</td><td>Transactional writes</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- ── Redis Data Structures ──────────────────────────────── -->
+  <div class="section-label">Redis Data Structures</div>
+  <h2 class="section-title">Redis Beyond Simple Caching</h2>
+  <p class="section-desc">Redis is not just a key-value cache. It is a data structure server. The choice of data structure determines what operations are O(1) vs O(n) and what problems each one solves efficiently.</p>
+
+  <div class="table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr><th>Type</th><th>Commands</th><th>O(n) operations</th><th>Use Case</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>String</td><td>GET, SET, INCR, APPEND</td><td>String ops on large values</td><td>Cache, counters, distributed locks (SET NX EX)</td></tr>
+        <tr><td>List</td><td>LPUSH, RPOP, LRANGE</td><td>LINDEX, LINSERT</td><td>Message queues, activity feeds, job queues</td></tr>
+        <tr><td>Hash</td><td>HGET, HSET, HMGET</td><td>HGETALL on large hashes</td><td>Object storage (user profile), session data</td></tr>
+        <tr><td>Set</td><td>SADD, SISMEMBER, SUNION</td><td>SMEMBERS on large sets</td><td>Unique visitors, tag systems, friend lists</td></tr>
+        <tr><td>Sorted Set</td><td>ZADD, ZRANGE, ZRANK</td><td>ZRANGEBYLEX on large sets</td><td>Leaderboards, rate limiters, time-series indexes</td></tr>
+        <tr><td>Stream</td><td>XADD, XREAD, XGROUP</td><td>Full stream scan</td><td>Event sourcing, CDC, Kafka-like message log</td></tr>
+        <tr><td>Bitmap</td><td>SETBIT, GETBIT, BITCOUNT</td><td>BITPOS on large bitmaps</td><td>Daily active users (1 bit/user/day = 125MB for 1B users)</td></tr>
+        <tr><td>HyperLogLog</td><td>PFADD, PFCOUNT</td><td>N/A (O(1) always)</td><td>Approximate unique count with fixed 12KB memory</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Cassandra Data Model ────────────────────────────────── -->
+  <div class="section-label">Cassandra Data Modeling</div>
+  <h2 class="section-title">Partition Key and Clustering Key</h2>
+  <p class="section-desc">In Cassandra, data modeling is driven by access patterns — not by normalization rules. The partition key determines which node holds the data. The clustering key determines sort order within a partition. Getting this wrong means scatter-gather queries or hot partitions.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Partition key</h4>
+        <p>Determines which node(s) store the row. All rows with the same partition key are stored together on the same node (and its replicas). Queries that include the full partition key go to exactly one node — efficient. Queries without the partition key must scatter to all nodes — expensive. Choose a partition key with high cardinality and even distribution: user_id, tenant_id, device_id. Avoid: status, date alone, any low-cardinality field.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Clustering key</h4>
+        <p>Within a partition, rows are sorted by the clustering key. This enables efficient range queries within a partition: <code>WHERE user_id = 42 AND event_time &gt; '2024-01-01'</code> — efficient because rows are sorted by event_time within the user_id partition. Compound partition keys can model time-bucketed data: <code>PRIMARY KEY ((user_id, month), event_time)</code> — rows for one user in one month are co-located and sorted by time.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Denormalization is required</h4>
+        <p>Cassandra has no JOINs. If you need to query by two different access patterns (e.g., "get orders by user_id" AND "get orders by order_status"), you must maintain two separate tables — one optimized for each query. Write to both tables at application level or using materialized views. This is explicit denormalization driven by query requirements, not convenience.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div>
+        <h4>Tunable consistency</h4>
+        <p>Cassandra allows per-operation consistency: <code>CONSISTENCY ONE</code> (fastest, returns as soon as one replica responds), <code>CONSISTENCY QUORUM</code> (majority of replicas — strong consistency if W + R &gt; N), <code>CONSISTENCY ALL</code> (all replicas, slowest, highest availability of data). The formula: for strong consistency, write consistency + read consistency must exceed the replication factor. With RF=3: QUORUM write + QUORUM read (2+2&gt;3) is strongly consistent.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Graph Database ──────────────────────────────────────── -->
+  <div class="section-label">Graph Databases</div>
+  <h2 class="section-title">When Native Graphs Win</h2>
+  <p class="section-desc">Relational databases represent relationships with foreign keys and JOINs. For shallow relationships (1–2 hops), JOINs are fast. For deep or variable-depth relationships (friendship networks, dependency graphs, recommendation paths), JOIN count grows exponentially — graph databases win decisively.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Native graph storage (Neo4j)</h4>
+        <p>Neo4j stores nodes and relationships as first-class objects with direct pointers. Traversing a relationship from node A to node B is a direct pointer follow — O(1) regardless of graph size. In a relational DB, finding "friends of friends" requires two JOINs; at 5 hops deep, the JOIN tree grows to ~n^5 where n is avg degree. Graph databases maintain O(k) per hop where k is degree of the node.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Cypher query language (Neo4j)</h4>
+        <p>Cypher expresses graph patterns visually. To find all friends-of-friends within 3 hops: <code>MATCH (user:Person {name: 'Alice'})-[:KNOWS*1..3]-(friend:Person) RETURN DISTINCT friend.name</code>. The <code>*1..3</code> means 1 to 3 relationship hops. This same query in SQL would require 3 self-joins of the relationships table — complex and slow at scale.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>When NOT to use a graph DB</h4>
+        <p>Graph databases struggle with: bulk aggregations across all nodes (use a columnar or relational DB), high write throughput (Neo4j writes are not as fast as Cassandra), simple entity lookups without relationship traversal (use a document or relational DB). Graph DBs excel specifically when you need multi-hop relationship queries and the relationships themselves carry properties (e.g., edge weights in a routing graph).</p>
+      </div>
+    </div>
   </div>
 
   <div class="section-label">Interactive Demo</div>
@@ -101,7 +188,7 @@
       <div class="demo-controls">
         <button class="demo-btn" data-action="query-total">Query: totals only</button>
         <button class="demo-btn" data-action="query-all">Query: all columns</button>
-        <button class="demo-btn" data-action="reset-nosql">↩ Reset</button>
+        <button class="demo-btn" data-action="reset-nosql">Reset</button>
       </div>
     </div>
     <div class="demo-canvas-wrap"></div>
@@ -149,7 +236,7 @@
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-num">Question 3 of 5</div>
       <div class="quiz-q-text">For time-series data with extremely high write throughput, the best NoSQL type is:</div>
       <div class="quiz-options">
         <div class="quiz-option" data-correct="false" data-explanation="Document stores can work but aren't optimized for time-series write throughput."><span class="opt-letter">A</span>Document store (MongoDB)</div>
@@ -159,13 +246,35 @@
       </div>
       <div class="quiz-feedback"></div>
     </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 4 of 5</div>
+      <div class="quiz-q-text">In Cassandra, the partition key determines:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Sort order within a partition is determined by the clustering key, not the partition key."><span class="opt-letter">A</span>The sort order of rows within a table</div>
+        <div class="quiz-option" data-correct="true" data-explanation="The partition key is hashed to determine which node(s) store the data. All rows with the same partition key are co-located on the same node and its replicas. Queries with the full partition key go to exactly one node — efficient. Without it, queries must scatter to all nodes."><span class="opt-letter">B</span>Which node(s) store the data — all rows with the same partition key are co-located</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Replication factor is a cluster-wide or keyspace-level setting, not determined by partition key."><span class="opt-letter">C</span>How many replicas are created for each row</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Consistency level is a per-query setting, not determined by partition key."><span class="opt-letter">D</span>The consistency level for reads and writes</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 5 of 5</div>
+      <div class="quiz-q-text">Redis HyperLogLog is useful for:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="HyperLogLog provides approximate, not exact, unique counts — it uses statistical estimation."><span class="opt-letter">A</span>Exact unique user counting with zero error</div>
+        <div class="quiz-option" data-correct="true" data-explanation="HyperLogLog approximates the cardinality (number of unique elements) of a set using a fixed 12KB of memory regardless of input size, with ~0.81% error rate. Perfect for counting unique visitors, unique queries, or any large cardinality estimate where a small error is acceptable."><span class="opt-letter">B</span>Approximate unique count with ~0.81% error using only 12KB of memory</div>
+        <div class="quiz-option" data-correct="false" data-explanation="HyperLogLog does not store the actual elements — only a probabilistic sketch. You cannot retrieve members."><span class="opt-letter">C</span>Storing all unique user IDs for later retrieval</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Sorted sets, not HyperLogLog, are used for leaderboards with ranking."><span class="opt-letter">D</span>Implementing a leaderboard with rankings</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
   </div>
 
   <div class="section-label">Interview Q&A</div>
   <div class="qa-section">
     <div class="qa-item">
       <div class="qa-q">When would you choose NoSQL over a relational database?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">Choose NoSQL when: (1) <strong>Schema flexibility</strong>: data structure varies per record (e.g., product catalog with different attributes per product type). (2) <strong>Extreme write throughput</strong>: Cassandra/HBase handle millions of writes/sec. (3) <strong>Horizontal scale-out</strong>: data too large for a single machine and JOINs aren't needed. (4) <strong>Specific access patterns</strong>: graph traversal (Neo4j), full-text search (Elasticsearch), sub-millisecond cache (Redis). (5) <strong>Operational simplicity</strong>: schema-less development in early-stage products. Stick with SQL when: ACID transactions required, complex queries with JOINs, strong data integrity, team SQL expertise.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">Choose NoSQL when: (1) <strong>Schema flexibility</strong>data structure varies per record (e.g., product catalog with different attributes per product type). (2) <strong>Extreme write throughput</strong>Cassandra/HBase handle millions of writes/sec. (3) <strong>Horizontal scale-out</strong>data too large for a single machine and JOINs aren't needed. (4) <strong>Specific access patterns</strong>graph traversal (Neo4j), full-text search (Elasticsearch), sub-millisecond cache (Redis). (5) <strong>Operational simplicity</strong>schema-less development in early-stage products. Stick with SQL when: ACID transactions required, complex queries with JOINs, strong data integrity, team SQL expertise.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">What is eventual consistency and what are its implications?<span class="qa-chevron">▾</span></div>
@@ -181,7 +290,19 @@
     </div>
     <div class="qa-item">
       <div class="qa-q">How does DynamoDB handle high availability and consistency?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">DynamoDB replicates data across 3 AZs in a region. By default it offers <strong>eventually consistent reads</strong> (might return stale data from a replica not yet synchronized) — fastest and cheapest. <strong>Strongly consistent reads</strong> route to the primary replica and always return the latest committed data — costs 2× read capacity units. DynamoDB is classified as AP in CAP (available + partition tolerant). For global tables (multi-region), it uses last-write-wins conflict resolution. Transactions: DynamoDB supports ACID transactions across multiple items via <code>TransactWriteItems</code> / <code>TransactGetItems</code> — these are serializable but limited to 25 items and single-region. Pricing is capacity-unit based — design access patterns to be efficient.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">DynamoDB replicates data across 3 AZs in a region. By default it offers <strong>eventually consistent reads</strong> — might return stale data from a replica not yet synchronized; fastest and cheapest. <strong>Strongly consistent reads</strong> route to the primary replica and always return the latest committed data — costs 2x read capacity units. DynamoDB is classified as AP in CAP. For global tables (multi-region), it uses last-write-wins conflict resolution. Transactions: DynamoDB supports ACID transactions across multiple items via <code>TransactWriteItems</code> / <code>TransactGetItems</code> — serializable but limited to 25 items and single-region. Pricing is capacity-unit based — design access patterns to be efficient. Single-table design patterns use composite keys and GSIs (Global Secondary Indexes) to support multiple access patterns without JOINs.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Explain Redis data structures and which to use for a leaderboard.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Redis Sorted Sets are the native leaderboard data structure. <code>ZADD leaderboard 15230 "alice"</code> adds alice with score 15230. <code>ZREVRANK leaderboard "alice"</code> returns alice's rank (0-indexed from highest). <code>ZREVRANGE leaderboard 0 9 WITHSCORES</code> returns the top 10 with scores. Score updates: <code>ZINCRBY leaderboard 500 "alice"</code> atomically adds 500 to alice's score. Why not a SQL table with an index? SQL requires a query + sort + limit — works fine for small leaderboards. For leaderboards with millions of entries updated thousands of times per second, Redis Sorted Set's O(log n) write and O(log n + k) range read are ideal. Combine with Redis HyperLogLog for "unique players today" metrics and a Hash for player metadata (name, avatar URL) — three data structures, three problems solved.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What are CRDTs and when are they used in distributed databases?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">CRDTs (Conflict-free Replicated Data Types) are data structures mathematically designed so that any concurrent updates can always be merged without conflict. The merge operation must be commutative (A merge B = B merge A), associative ((A merge B) merge C = A merge (B merge C)), and idempotent (A merge A = A). Examples: G-Counter (grow-only counter — only increments, each replica maintains its own counter, total is sum); 2P-Set (two-phase set — add and remove sets, a removed element can never be re-added); LWW-Register (Last Write Wins — each value tagged with timestamp); PN-Counter (positive-negative counter — supports decrement via two G-Counters). Used by: Riak (peer-to-peer KV), Redis (CRDT-based counters), collaborative editing tools (Google Docs uses operational transforms, a related concept), Dynamo-style databases. CRDTs are suitable when you need eventual consistency without conflict resolution logic and the data structure semantics match the CRDT constraints.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">When should you use MongoDB versus PostgreSQL?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Use MongoDB when: (1) Data is genuinely document-shaped and varies between records (e-commerce product catalog where electronics have different attributes from clothing). (2) You need flexible schema evolution without ALTER TABLE migrations. (3) Data is always accessed as a whole document (embedded comments, blog posts with metadata). (4) Team prefers JSON-native APIs and doesn't need complex SQL analytics. Use PostgreSQL when: (1) Data has regular structure and strong relationships (users, orders, products with FK constraints). (2) ACID transactions across multiple tables required. (3) Complex analytical queries with JOINs, window functions, CTEs. (4) Schema validation and constraint enforcement needed. (5) Full MVCC and point-in-time recovery needed. Note: PostgreSQL with JSONB columns can serve many document store use cases while retaining full SQL power — a common "best of both" choice.</div></div>
     </div>
   </div>
 
@@ -189,7 +310,7 @@
   <div class="reading-links">
     <a class="reading-link" href="https://www.mongodb.com/docs/manual/data-modeling/" target="_blank">MongoDB Data Modeling</a>
     <a class="reading-link" href="https://cassandra.apache.org/doc/latest/cassandra/data_modeling/" target="_blank">Cassandra Data Modeling</a>
-    <a class="reading-link" href="https://jepsen.io/consistency" target="_blank">🔬 Consistency Models (Jepsen)</a>
+    <a class="reading-link" href="https://jepsen.io/consistency" target="_blank">Consistency Models (Jepsen)</a>
   </div>
 
   <div class="topic-nav">

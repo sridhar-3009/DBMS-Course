@@ -116,147 +116,165 @@ function initDemos() {
   }
 }
 
-// ── Three.js Hero ─────────────────────────────────────────────
+// ── Canvas 2D Hero (DB node graph, no WebGL needed) ──────────
 function initHero() {
   const canvas = document.getElementById('hero-canvas');
-  if (!canvas || typeof THREE === 'undefined') return;
+  if (!canvas) return;
+  const panel = canvas.parentElement;
 
-  const W = () => canvas.parentElement.offsetWidth || 600;
-  const H = () => canvas.parentElement.offsetHeight || 600;
+  function resize() {
+    canvas.width  = panel.offsetWidth  || 640;
+    canvas.height = panel.offsetHeight || 720;
+  }
+  resize();
 
-  const scene    = new THREE.Scene();
-  const camera   = new THREE.PerspectiveCamera(55, W()/H(), 0.1, 200);
-  camera.position.set(0, 0, 14);
-
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(W(), H());
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-  const sun = new THREE.DirectionalLight(0xA78BFA, 2.0);
-  sun.position.set(6, 8, 6);
-  scene.add(sun);
-  const fillLight = new THREE.PointLight(0x7C3AED, 3.0, 30);
-  fillLight.position.set(-6, -4, 4);
-  scene.add(fillLight);
+  const ctx = canvas.getContext('2d');
 
   const NODES = [
-    { pos: [-5, -1.5, 0], color: 0x0EA5E9, emissive: 0x0369A1, label: 'OLTP'  },
-    { pos: [ 5, -1.5, 0], color: 0xA78BFA, emissive: 0x6D28D9, label: 'OLAP'  },
-    { pos: [ 0,  3.5, 0], color: 0x10B981, emissive: 0x065F46, label: 'NoSQL' },
+    { label:'OLTP', sub:'MySQL / PostgreSQL', color:'#0EA5E9', x:0.35, y:0.28 },
+    { label:'OLAP', sub:'Snowflake / BigQuery', color:'#A78BFA', x:0.72, y:0.22 },
+    { label:'NoSQL', sub:'MongoDB / Cassandra', color:'#10B981', x:0.62, y:0.58 },
+    { label:'Cache', sub:'Redis / Memcached',   color:'#F59E0B', x:0.28, y:0.62 },
+    { label:'Graph', sub:'Neo4j / Neptune',      color:'#EC4899', x:0.78, y:0.78 },
   ];
 
-  function makeLabel(text, hexColor) {
-    const c = document.createElement('canvas');
-    c.width = 256; c.height = 72;
-    const cx = c.getContext('2d');
-    cx.clearRect(0, 0, 256, 72);
-    cx.font = 'bold 28px Inter, sans-serif';
-    cx.textAlign = 'center';
-    cx.textBaseline = 'middle';
-    cx.fillStyle = '#' + hexColor.toString(16).padStart(6, '0');
-    cx.fillText(text, 128, 36);
-    const tex = new THREE.CanvasTexture(c);
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-    const spr = new THREE.Sprite(mat);
-    spr.scale.set(2.8, 0.7, 1);
-    return spr;
-  }
-
-  const meshes = [];
-  NODES.forEach(n => {
-    const geo = new THREE.CylinderGeometry(0.72, 0.72, 1.6, 40);
-    const mat = new THREE.MeshPhongMaterial({
-      color: n.color, emissive: n.emissive, emissiveIntensity: 0.35,
-      shininess: 80, transparent: true, opacity: 0.88
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(...n.pos);
-    scene.add(mesh);
-
-    const rGeo = new THREE.TorusGeometry(0.9, 0.045, 16, 64);
-    const rMat = new THREE.MeshBasicMaterial({ color: n.color, transparent: true, opacity: 0.4 });
-    const ring = new THREE.Mesh(rGeo, rMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(n.pos[0], n.pos[1] + 0.82, n.pos[2]);
-    scene.add(ring);
-
-    const spr = makeLabel(n.label, n.color);
-    spr.position.set(n.pos[0], n.pos[1] + 1.7, n.pos[2]);
-    scene.add(spr);
-
-    meshes.push({ mesh, mat, ring, rMat });
-  });
-
-  // Edges between nodes
-  [[0,1],[1,2],[2,0]].forEach(([a, b]) => {
-    const pts = [new THREE.Vector3(...NODES[a].pos), new THREE.Vector3(...NODES[b].pos)];
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const mat = new THREE.LineBasicMaterial({ color: 0x3730a3, transparent: true, opacity: 0.55 });
-    scene.add(new THREE.Line(geo, mat));
-  });
+  const EDGES = [[0,1],[0,3],[1,2],[2,3],[2,4],[1,4]];
 
   // Star field
-  const starPts = [];
-  for (let i = 0; i < 400; i++) {
-    starPts.push((Math.random() - 0.5) * 90, (Math.random() - 0.5) * 90, (Math.random() - 0.5) * 90 - 20);
-  }
-  const sGeo = new THREE.BufferGeometry();
-  sGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPts, 3));
-  scene.add(new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0x6366F1, size: 0.08, transparent: true, opacity: 0.45 })));
+  const STARS = Array.from({length:140}, () => ({
+    x: Math.random(), y: Math.random(),
+    r: 0.5 + Math.random() * 1.2,
+    a: 0.15 + Math.random() * 0.45,
+    speed: 0.0003 + Math.random() * 0.0005,
+    phase: Math.random() * Math.PI * 2,
+  }));
 
-  // Data particles travelling along edges
-  const pGeo = new THREE.SphereGeometry(0.1, 6, 6);
-  const EDGES = [[0,1],[1,2],[2,0]];
-  const particles = [];
-  let lastSpawn = 0;
+  // Data packets on edges
+  const packets = [];
+  let lastPkt = 0;
 
-  function spawnParticle() {
-    const ei = Math.floor(Math.random() * EDGES.length);
-    const [ai, bi] = Math.random() > 0.5 ? EDGES[ei] : [EDGES[ei][1], EDGES[ei][0]];
-    const mat = new THREE.MeshBasicMaterial({ color: NODES[ai].color, transparent: true, opacity: 0.9 });
-    const m = new THREE.Mesh(pGeo, mat);
-    m.position.set(...NODES[ai].pos);
-    scene.add(m);
-    particles.push({
-      m, mat,
-      from: new THREE.Vector3(...NODES[ai].pos),
-      to:   new THREE.Vector3(...NODES[bi].pos),
-      t: 0,
-      spd: 0.007 + Math.random() * 0.009
-    });
+  function spawnPacket(t) {
+    const [a, b] = EDGES[Math.floor(Math.random() * EDGES.length)];
+    const dir = Math.random() > 0.5 ? [a, b] : [b, a];
+    packets.push({ from: dir[0], to: dir[1], t: 0, spd: 0.004 + Math.random() * 0.005 });
   }
 
-  let orbit = 0;
-  function animate(t) {
-    requestAnimationFrame(animate);
-    orbit += 0.0022;
-    camera.position.x = Math.sin(orbit) * 13;
-    camera.position.z = Math.cos(orbit) * 13;
-    camera.position.y = Math.sin(orbit * 0.3) * 2.5;
-    camera.lookAt(0, 0, 0);
+  let tick = 0;
 
-    meshes.forEach((n, i) => {
-      n.mat.emissiveIntensity = 0.2 + Math.sin(t * 0.0016 + i * 2.1) * 0.14;
-      n.rMat.opacity = 0.22 + Math.sin(t * 0.002 + i * 1.5) * 0.14;
+  function draw(ts) {
+    requestAnimationFrame(draw);
+    tick = ts;
+    const W = canvas.width, H = canvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Stars
+    STARS.forEach(s => {
+      const a = s.a * (0.6 + 0.4 * Math.sin(ts * s.speed + s.phase));
+      ctx.beginPath();
+      ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(167,139,250,${a})`;
+      ctx.fill();
     });
 
-    if (t - lastSpawn > 700) { spawnParticle(); lastSpawn = t; }
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
+    // Resolve node screen coords
+    const pos = NODES.map(n => ({
+      x: n.x * W, y: n.y * H,
+      glow: 0.55 + 0.35 * Math.sin(ts * 0.0008 + NODES.indexOf(n) * 1.3)
+    }));
+
+    // Edges
+    EDGES.forEach(([a, b]) => {
+      const ax = pos[a].x, ay = pos[a].y, bx = pos[b].x, by = pos[b].y;
+      const grad = ctx.createLinearGradient(ax, ay, bx, by);
+      grad.addColorStop(0, hexA(NODES[a].color, 0.22));
+      grad.addColorStop(1, hexA(NODES[b].color, 0.22));
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      ctx.strokeStyle = grad; ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Packets
+    if (ts - lastPkt > 600) { spawnPacket(ts); lastPkt = ts; }
+    for (let i = packets.length - 1; i >= 0; i--) {
+      const p = packets[i];
       p.t += p.spd;
-      if (p.t >= 1) { scene.remove(p.m); particles.splice(i, 1); continue; }
-      p.m.position.lerpVectors(p.from, p.to, p.t);
-      p.mat.opacity = Math.sin(p.t * Math.PI) * 0.9;
+      if (p.t > 1) { packets.splice(i, 1); continue; }
+      const fa = pos[p.from], ta = pos[p.to];
+      const px = fa.x + (ta.x - fa.x) * easeInOut(p.t);
+      const py = fa.y + (ta.y - fa.y) * easeInOut(p.t);
+      const alpha = Math.sin(p.t * Math.PI);
+      ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fillStyle = hexA(NODES[p.from].color, alpha * 0.9);
+      ctx.shadowBlur = 10; ctx.shadowColor = NODES[p.from].color;
+      ctx.fill(); ctx.shadowBlur = 0;
     }
-    renderer.render(scene, camera);
+
+    // Nodes
+    const R = Math.min(W, H) * 0.065;
+    pos.forEach((p, i) => {
+      const n = NODES[i];
+      const g = p.glow;
+
+      // Glow ring
+      const grd = ctx.createRadialGradient(p.x, p.y, R * 0.6, p.x, p.y, R * 2.2);
+      grd.addColorStop(0, hexA(n.color, 0.22 * g));
+      grd.addColorStop(1, hexA(n.color, 0));
+      ctx.beginPath(); ctx.arc(p.x, p.y, R * 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = grd; ctx.fill();
+
+      // Cylinder body (two rects + ellipses)
+      const cw = R * 2, ch = R * 0.6, cy = p.y - R * 0.3;
+      ctx.beginPath();
+      roundRectPath(ctx, p.x - R, cy - ch / 2, cw, ch * 2.4 + ch * 0.5, 8);
+      const bodyGrad = ctx.createLinearGradient(p.x - R, cy, p.x + R, cy + ch * 2);
+      bodyGrad.addColorStop(0, hexA(n.color, 0.85));
+      bodyGrad.addColorStop(1, hexA(n.color, 0.45));
+      ctx.fillStyle = bodyGrad; ctx.fill();
+      ctx.strokeStyle = hexA(n.color, 0.9 * g); ctx.lineWidth = 1.5; ctx.stroke();
+
+      // Top ellipse (disk highlight)
+      ctx.beginPath();
+      ctx.ellipse(p.x, cy - ch / 2, R, ch * 0.45, 0, 0, Math.PI * 2);
+      ctx.fillStyle = hexA('#ffffff', 0.14); ctx.fill();
+      ctx.strokeStyle = hexA(n.color, 0.7 * g); ctx.lineWidth = 1.2; ctx.stroke();
+
+      // Label
+      ctx.font = `bold ${Math.max(10, R * 0.62)}px "JetBrains Mono", monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#EDE9FE';
+      ctx.fillText(n.label, p.x, p.y + ch * 0.3);
+
+      // Sub-label
+      ctx.font = `${Math.max(8, R * 0.42)}px Inter, sans-serif`;
+      ctx.fillStyle = hexA(n.color, 0.8);
+      ctx.fillText(n.sub, p.x, p.y + ch * 1.5);
+    });
   }
-  animate(0);
+
+  function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+  function hexA(hex, a) {
+    const r = parseInt(hex.slice(1,3),16), g2 = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g2},${b},${a.toFixed(3)})`;
+  }
+  function roundRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  requestAnimationFrame(draw);
 
   window.addEventListener('resize', () => {
-    camera.aspect = W() / H();
-    camera.updateProjectionMatrix();
-    renderer.setSize(W(), H());
+    resize();
   });
 }
 
@@ -281,13 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
 
   if (document.getElementById('hero-canvas')) {
-    if (typeof THREE !== 'undefined') {
-      initHero();
-    } else {
-      const check = setInterval(() => {
-        if (typeof THREE !== 'undefined') { clearInterval(check); initHero(); }
-      }, 80);
-    }
+    initHero();
   }
 
   requestAnimationFrame(() => {

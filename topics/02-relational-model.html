@@ -17,7 +17,6 @@
     <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -29,7 +28,7 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 02</div>
     <h1>The <span class="accent">Relational</span> Model</h1>
-    <p class="subtitle">Codd's formal foundation: relations, tuples, keys, constraints, and the relational algebra that powers every SQL query under the hood.</p>
+    <p class="subtitle">Codd's formal foundation: relations, tuples, keys, integrity constraints, and the relational algebra that powers every SQL query under the hood.</p>
     <div class="company-badges">
       <span class="badge">PostgreSQL</span><span class="badge">MySQL</span><span class="badge">Oracle</span>
       <span class="badge">SQL Server</span><span class="badge">SQLite</span>
@@ -41,89 +40,213 @@
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Relation (Table)</h4>
-      <p>A relation is a set of tuples (rows), all sharing the same schema (ordered list of attribute names and domains). Order of tuples is undefined — it's a set, not a list.</p>
+      <p>A relation is a set of tuples (rows), all sharing the same schema (ordered list of attribute names and domains). Order of tuples is undefined — it is a set, not a list. Duplicate rows are not allowed in the strict relational model.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
-      <h4>Keys</h4>
-      <p>Superkey → minimal superkey = Candidate Key → chosen CK = Primary Key. Foreign Keys enforce referential integrity between relations.</p>
+      <h4>Keys Hierarchy</h4>
+      <p>Superkey: any set of attributes that uniquely identifies a tuple. Minimal superkey = Candidate Key. Chosen candidate key = Primary Key. Foreign Keys enforce referential integrity between relations.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Referential Integrity</h4>
-      <p>A FK value must either be NULL or match a PK in the referenced table. ON DELETE CASCADE / SET NULL / RESTRICT control what happens when the parent row is deleted.</p>
+      <p>A FK value must either be NULL or match a PK in the referenced table. ON DELETE CASCADE / SET NULL / RESTRICT control what happens when the parent row is deleted — the choice encodes the business rule.</p>
     </div>
     <div class="mini-card">
       <div class="mini-card-icon"></div>
       <h4>Relational Algebra</h4>
-      <p>Six fundamental operations: σ (select rows), π (project columns), ⋈ (join), ∪ (union), − (difference), × (Cartesian product). All SQL compiles down to these.</p>
+      <p>Six fundamental operations: sigma (select rows), pi (project columns), join (combine relations), union, difference, Cartesian product. All SQL compiles down to these. Extended operators: aggregation, outer join, rename.</p>
     </div>
   </div>
 
-  <div class="section-label">How It Works</div>
-  <h2 class="section-title">From Algebra to SQL</h2>
+  <div class="section-label">Key Taxonomy</div>
+  <h2 class="section-title">From Superkey to Foreign Key</h2>
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <h4>Superkey</h4>
+      <ul>
+        <li>Any set of columns uniquely identifying a row</li>
+        <li>{user_id}, {email}, {user_id,email} are all superkeys</li>
+        <li>May have redundant columns</li>
+        <li>Every candidate key is a superkey</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Candidate Key</h4>
+      <ul>
+        <li>A minimal superkey — no subset also identifies rows</li>
+        <li>{user_id} and {email} are candidate keys</li>
+        <li>{user_id, email} is NOT one (user_id alone suffices)</li>
+        <li>A table may have multiple candidate keys</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Primary Key</h4>
+      <ul>
+        <li>One chosen candidate key per table</li>
+        <li>Cannot be NULL (implicit NOT NULL)</li>
+        <li>Physically creates a clustered B+tree in InnoDB</li>
+        <li>Other candidate keys become UNIQUE constraints</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Foreign Key</h4>
+      <ul>
+        <li>Attribute(s) referencing a PK in another table</li>
+        <li>Value must be NULL or match a referenced PK</li>
+        <li>Enforces referential integrity across tables</li>
+        <li>ON DELETE: CASCADE / SET NULL / RESTRICT</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-label">Integrity Constraints</div>
+  <h2 class="section-title">Enforcing Correct Data</h2>
   <div class="steps">
     <div class="step-item">
       <div class="step-num">1</div>
       <div>
-        <h4>σ — Selection (WHERE)</h4>
-        <p>Filters rows based on a predicate. <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">σ salary>80000 (employees)</code> — equivalent to <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">WHERE salary > 80000</code>. Only filters rows, never reduces columns.</p>
+        <h4>Domain Constraint</h4>
+        <p>Every attribute value must belong to its declared domain. Examples: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">age INT CHECK (age &gt;= 0)</code>, <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">status CHECK (status IN ('active','inactive'))</code>. Domains constrain what values are legal, independent of other rows.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">2</div>
       <div>
-        <h4>π — Projection (SELECT cols)</h4>
-        <p>Keeps only specified columns, removes duplicates. <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">π name,dept (employees)</code> — the SQL <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">SELECT DISTINCT name, dept</code>.</p>
+        <h4>Entity Integrity</h4>
+        <p>Primary key attributes must be non-null and unique. Every tuple must be uniquely identifiable. This is why surrogate keys (BIGSERIAL, UUID) are common — natural keys (email addresses, SSNs) are often nullable or change over time.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">3</div>
       <div>
-        <h4>⋈ — Natural Join</h4>
-        <p>Combines two relations on all common attribute names, eliminating duplicates. SQL's <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">NATURAL JOIN</code>. More common: theta-join with explicit predicate (the SQL <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">JOIN … ON</code>).</p>
+        <h4>Referential Integrity</h4>
+        <p>FK values must reference an existing PK or be NULL. ON DELETE / UPDATE actions control cascading: CASCADE propagates the change, RESTRICT prevents it if children exist, SET NULL nullifies the FK, SET DEFAULT applies a default value.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div>
+        <h4>User-Defined Constraints</h4>
+        <p>Business rules beyond keys: <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">CHECK (end_date &gt; start_date)</code>, multi-column <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">UNIQUE (user_id, product_id)</code>. Triggers can enforce complex cross-table invariants that CHECK cannot express in a single row.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Relational Algebra — Six Core Operations</h2>
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>sigma — Selection (WHERE)</h4>
+        <p>Filters rows based on a predicate. <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">sigma(salary&gt;80000)(employees)</code> — equivalent to <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">WHERE salary &gt; 80000</code>. Only filters rows, never reduces columns. Result has the same schema as the input relation.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>pi — Projection (SELECT cols)</h4>
+        <p>Keeps only specified columns, removes duplicate tuples. Corresponds to <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">SELECT DISTINCT col1, col2</code>. SQL without DISTINCT allows duplicates (bag semantics) for performance; pure relational algebra always deduplicates.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Join — Combining Relations</h4>
+        <p>Combines two relations on a predicate. Natural join matches on all common attribute names — fragile in practice (adding a column silently changes semantics). Theta join with explicit predicate (SQL's JOIN ... ON) is always preferred in production.</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-num">4</div>
       <div>
         <h4>Set Operations (UNION, INTERSECT, EXCEPT)</h4>
-        <p>Combine result sets. Relations must be union-compatible (same arity, compatible domains). <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">UNION ALL</code> skips deduplication for performance.</p>
+        <p>Combine result sets. Relations must be union-compatible (same arity, compatible domains). UNION ALL skips deduplication for performance. INTERSECT returns rows in both; EXCEPT returns rows in the first but not the second.</p>
       </div>
     </div>
   </div>
 
   <div class="code-block">
-    <div class="cb-header"><span class="cb-lang">Relational Algebra → SQL</span></div>
-    <pre><span class="cmt">-- Relational algebra: π name,dept_name (σ salary>80k (employees ⋈ departments))</span>
+    <div class="cb-header"><span class="cb-lang">Relational Algebra and SQL</span></div>
+    <pre><span class="cmt">Relational algebra: pi(name,dept_name)(sigma(salary>80000)(employees JOIN departments))</span>
 <span class="kw">SELECT</span>   e.name, d.dept_name
 <span class="kw">FROM</span>     employees e
 <span class="kw">JOIN</span>     departments d <span class="kw">ON</span> e.dept_id = d.dept_id
 <span class="kw">WHERE</span>    e.salary > <span class="num">80000</span>;
 
-<span class="cmt">-- Key constraints in DDL</span>
+<span class="cmt">Key constraints in DDL</span>
 <span class="kw">CREATE TABLE</span> orders (
-  order_id   <span class="fn">INT</span>     <span class="kw">PRIMARY KEY</span>,
-  customer_id <span class="fn">INT</span>    <span class="kw">NOT NULL</span> <span class="kw">REFERENCES</span> customers(customer_id) <span class="kw">ON DELETE CASCADE</span>,
-  total      <span class="fn">NUMERIC</span>(<span class="num">10,2</span>) <span class="kw">CHECK</span> (total >= <span class="num">0</span>)
-);</pre>
+  order_id    <span class="fn">BIGSERIAL</span>    <span class="kw">PRIMARY KEY</span>,
+  customer_id <span class="fn">INT</span>         <span class="kw">NOT NULL</span>
+                           <span class="kw">REFERENCES</span> customers(customer_id)
+                           <span class="kw">ON DELETE RESTRICT</span>,
+  status      <span class="fn">VARCHAR</span>(<span class="num">20</span>) <span class="kw">NOT NULL</span>
+                           <span class="kw">CHECK</span> (status <span class="kw">IN</span> (<span class="str">'pending'</span>,<span class="str">'paid'</span>,<span class="str">'shipped'</span>)),
+  total       <span class="fn">NUMERIC</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">CHECK</span> (total > <span class="num">0</span>),
+  created_at  <span class="fn">TIMESTAMPTZ</span>  <span class="kw">DEFAULT</span> now()
+);
+
+<span class="cmt">UNION: customers who ordered OR registered this year</span>
+<span class="kw">SELECT</span> customer_id <span class="kw">FROM</span> orders
+<span class="kw">UNION</span>
+<span class="kw">SELECT</span> id <span class="kw">FROM</span> customers <span class="kw">WHERE</span> created_at >= <span class="str">'2024-01-01'</span>;
+
+<span class="cmt">EXCEPT: customers who registered but never ordered</span>
+<span class="kw">SELECT</span> id <span class="kw">FROM</span> customers
+<span class="kw">EXCEPT</span>
+<span class="kw">SELECT DISTINCT</span> customer_id <span class="kw">FROM</span> orders;</pre>
   </div>
 
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>Relation</strong> = table. <strong>Tuple</strong> = row. <strong>Attribute</strong> = column. All values are atomic (1NF).</li>
+      <li><strong>Relation</strong> = table. <strong>Tuple</strong> = row. <strong>Attribute</strong> = column. All values are atomic (1NF rule).</li>
       <li><strong>Primary key</strong> uniquely identifies a tuple. <strong>Foreign key</strong> references a primary key in another relation.</li>
       <li><strong>INNER JOIN</strong> returns only matching rows. <strong>LEFT JOIN</strong> keeps all rows from the left, NULLs on no match.</li>
-      <li><strong>Relational algebra</strong>: selection (sigma), projection (pi), join, union, difference — the theoretical basis for SQL.</li>
-      <li>Candidate keys, superkeys, and functional dependencies underpin normalization theory.</li>
+      <li><strong>Relational algebra</strong> — selection, projection, join, union, difference — is the theoretical basis for SQL.</li>
+      <li>Candidate keys and functional dependencies underpin normalization theory (next topic).</li>
     </ul>
   </div>
 
-  <!-- Demo -->
-  <div class="section-label">Interactive Demo</div>
-  <h2 class="section-title">JOIN Visualizer</h2>
-  <p class="section-desc">Select a join type to see which rows match between the employees and departments tables. Matching rows animate into the result.</p>
+  <div class="section-label">JOIN Types Reference</div>
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <h4>INNER JOIN</h4>
+      <ul>
+        <li>Returns only matching rows from both sides</li>
+        <li>Non-matching rows are silently dropped</li>
+        <li>Most common join type in OLTP</li>
+        <li>Use when you need data from both tables</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>LEFT JOIN</h4>
+      <ul>
+        <li>All rows from left, matching from right</li>
+        <li>NULLs for right side when no match</li>
+        <li>Common for optional relationships</li>
+        <li>Use: orders with or without invoices</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>FULL OUTER JOIN</h4>
+      <ul>
+        <li>All rows from both sides</li>
+        <li>NULLs where no match on either side</li>
+        <li>Rare in practice, powerful for reconciliation</li>
+        <li>Use: finding records missing from either table</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>CROSS JOIN</h4>
+      <ul>
+        <li>Cartesian product: every row times every row</li>
+        <li>n * m rows — very expensive at scale</li>
+        <li>Useful for generating test data or combinations</li>
+        <li>Missing ON clause in INNER = accidental CROSS</li>
+      </ul>
+    </div>
+  </div>
 
   <div class="demo-section" id="demo-relational">
     <div class="demo-header">
@@ -139,58 +262,84 @@
   </div>
 
   <div class="info-box">
-    <h4>Key Insight: INNER vs OUTER Joins</h4>
-    <p>INNER JOIN returns only matched rows. LEFT JOIN keeps all left rows (unmatched right = NULL). RIGHT JOIN keeps all right rows. FULL OUTER JOIN keeps all rows from both sides. In practice, LEFT JOIN is far more common than RIGHT JOIN (rewrite by swapping table order).</p>
+    <h4>Closure Property: Why SQL Subqueries Work</h4>
+    <p>Every relational algebra operation takes one or more relations as input and produces a relation as output — this is closure. It enables arbitrary composition: the output of a SELECT is itself a relation that can be used as input to another SELECT. This is why subqueries, CTEs, and derived tables all work naturally in SQL. Every query result is a "virtual table" with the same interface as a stored table — that is why you can write <code>SELECT * FROM (SELECT ...) AS sub</code>.</p>
   </div>
 
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
       <h4>Choosing the wrong join type</h4>
-      <p>Using INNER JOIN when you need LEFT JOIN silently drops rows. Always verify expected result cardinality. A missing row in the result is often worse than an error.</p>
+      <p>Using INNER JOIN when you need LEFT JOIN silently drops rows. Always verify expected result cardinality with a COUNT(*) sanity check. A missing row in the result is often worse than an error because it is invisible.</p>
     </div>
     <div class="antipattern">
       <h4>Missing referential integrity constraints</h4>
-      <p>Storing FK values without declaring FOREIGN KEY lets orphaned rows accumulate — child rows pointing to deleted parents. This causes silent data corruption that's expensive to fix later.</p>
+      <p>Storing FK values without declaring FOREIGN KEY lets orphaned rows accumulate — child rows pointing to deleted parents. This silent data corruption is expensive to find and fix later, especially across millions of rows.</p>
     </div>
     <div class="antipattern">
-      <h4>Using natural joins in production queries</h4>
-      <p>NATURAL JOIN matches on ALL common column names. Adding a column to a table can silently change join semantics. Always use explicit ON conditions.</p>
+      <h4>Using NATURAL JOIN in production</h4>
+      <p>NATURAL JOIN matches on ALL common column names. Adding a new column to a table can silently change join semantics. Always use explicit ON conditions in production code.</p>
+    </div>
+    <div class="antipattern">
+      <h4>NULL in primary key columns</h4>
+      <p>NULLs in PK columns violate entity integrity. NULL means "unknown" — two NULLs are not equal in SQL's three-valued logic. Always make PKs NOT NULL. Use surrogate keys (BIGSERIAL, UUID) for stability.</p>
     </div>
   </div>
 
   <div class="section-label">Quiz</div>
   <div class="quiz-section">
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-num">Question 1 of 5</div>
       <div class="quiz-q-text">A relation in the relational model is formally defined as:</div>
       <div class="quiz-options">
         <div class="quiz-option" data-correct="false" data-explanation="A foreign key is a constraint, not the definition of a relation."><span class="opt-letter">A</span>A foreign key linking two tables</div>
-        <div class="quiz-option" data-correct="true" data-explanation="A relation is a set of tuples that all conform to the same schema (attribute names + domains). Order of tuples is undefined — it's a mathematical set."><span class="opt-letter">B</span>A set of tuples sharing the same attribute schema</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A relation is a set of tuples that all conform to the same schema. Order of tuples is undefined — it is a mathematical set."><span class="opt-letter">B</span>A set of tuples sharing the same attribute schema</div>
         <div class="quiz-option" data-correct="false" data-explanation="An index is a physical data structure, not a relation."><span class="opt-letter">C</span>An index on a primary key column</div>
-        <div class="quiz-option" data-correct="false" data-explanation="A query returns a result set, which may be relation-like, but it's not the definition of a relation."><span class="opt-letter">D</span>A SQL SELECT query result</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A query returns a result set, but that is not the definition of a relation."><span class="opt-letter">D</span>A SQL SELECT query result</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-num">Question 2 of 5</div>
       <div class="quiz-q-text">Which constraint ensures that a foreign key value either matches a primary key in the referenced table or is NULL?</div>
       <div class="quiz-options">
         <div class="quiz-option" data-correct="false" data-explanation="PRIMARY KEY ensures uniqueness and non-nullability within one table."><span class="opt-letter">A</span>PRIMARY KEY</div>
-        <div class="quiz-option" data-correct="false" data-explanation="NOT NULL only prevents NULL values; it doesn't link to another table."><span class="opt-letter">B</span>NOT NULL</div>
+        <div class="quiz-option" data-correct="false" data-explanation="NOT NULL only prevents NULL values; it does not link to another table."><span class="opt-letter">B</span>NOT NULL</div>
         <div class="quiz-option" data-correct="true" data-explanation="FOREIGN KEY enforces referential integrity: the referenced value must exist in the parent table or be NULL."><span class="opt-letter">C</span>FOREIGN KEY (referential integrity)</div>
-        <div class="quiz-option" data-correct="false" data-explanation="UNIQUE ensures no duplicates but doesn't reference another table."><span class="opt-letter">D</span>UNIQUE</div>
+        <div class="quiz-option" data-correct="false" data-explanation="UNIQUE ensures no duplicates but does not reference another table."><span class="opt-letter">D</span>UNIQUE</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 3 of 3</div>
-      <div class="quiz-q-text">The relational algebra π (pi / projection) operation does what?</div>
+      <div class="quiz-q-num">Question 3 of 5</div>
+      <div class="quiz-q-text">The relational algebra pi (projection) operation does what?</div>
       <div class="quiz-options">
-        <div class="quiz-option" data-correct="false" data-explanation="Filtering rows is the σ (sigma / selection) operation."><span class="opt-letter">A</span>Filters rows based on a predicate</div>
-        <div class="quiz-option" data-correct="false" data-explanation="Joining two relations is the ⋈ (join) operation."><span class="opt-letter">B</span>Joins two relations on a common attribute</div>
-        <div class="quiz-option" data-correct="true" data-explanation="π keeps only specified columns and removes duplicate tuples, corresponding to SQL SELECT DISTINCT col1, col2."><span class="opt-letter">C</span>Keeps only specified columns, removes duplicates</div>
-        <div class="quiz-option" data-correct="false" data-explanation="Aggregation (COUNT, SUM) is not a basic relational algebra operation — it's an extended operator."><span class="opt-letter">D</span>Computes aggregate functions like COUNT and SUM</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Filtering rows is the sigma (selection) operation."><span class="opt-letter">A</span>Filters rows based on a predicate</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Joining two relations is the join operation."><span class="opt-letter">B</span>Joins two relations on a common attribute</div>
+        <div class="quiz-option" data-correct="true" data-explanation="pi keeps only specified columns and removes duplicate tuples, corresponding to SQL SELECT DISTINCT col1, col2."><span class="opt-letter">C</span>Keeps only specified columns, removes duplicates</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Aggregation (COUNT, SUM) is not a basic relational algebra operation — it is an extended operator."><span class="opt-letter">D</span>Computes aggregate functions like COUNT and SUM</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 4 of 5</div>
+      <div class="quiz-q-text">What distinguishes a candidate key from a superkey?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Both can include multiple columns."><span class="opt-letter">A</span>A candidate key must be a single column</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A candidate key is a minimal superkey — no proper subset of it is also a superkey. Superkeys may have redundant columns."><span class="opt-letter">B</span>A candidate key is a minimal superkey — no subset also uniquely identifies rows</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Candidate keys may be nullable in the pure model; PKs (chosen candidate keys) cannot."><span class="opt-letter">C</span>A candidate key cannot contain NULL values</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A table can have multiple candidate keys."><span class="opt-letter">D</span>A candidate key can only exist once per table</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 5 of 5</div>
+      <div class="quiz-q-text">ON DELETE CASCADE on a foreign key means:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="RESTRICT prevents deletion of a parent row if child rows exist."><span class="opt-letter">A</span>Prevent deletion of the parent row if child rows exist</div>
+        <div class="quiz-option" data-correct="false" data-explanation="SET NULL sets the FK column to NULL, it does not cascade the deletion."><span class="opt-letter">B</span>Set the FK column to NULL when the parent is deleted</div>
+        <div class="quiz-option" data-correct="true" data-explanation="ON DELETE CASCADE automatically deletes child rows when the parent row is deleted. Useful for dependent entities like order_items when an order is deleted."><span class="opt-letter">C</span>Automatically delete child rows when the parent row is deleted</div>
+        <div class="quiz-option" data-correct="false" data-explanation="SET DEFAULT restores a default value, not cascade deletion."><span class="opt-letter">D</span>Set the FK to a default value when the parent is deleted</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
@@ -200,30 +349,43 @@
   <div class="qa-section">
     <div class="qa-item">
       <div class="qa-q">What is the difference between a superkey, candidate key, and primary key?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">A <strong>superkey</strong> is any set of attributes that uniquely identifies a tuple. A <strong>candidate key</strong> is a minimal superkey — no proper subset is also a superkey. A <strong>primary key</strong> is the one candidate key chosen by the designer as the principal identifier. Example: in a users table, {user_id}, {email}, and {user_id, email} are all superkeys. {user_id} and {email} are candidate keys (both minimal). The designer picks {user_id} as the PK.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">A <strong>superkey</strong> is any set of attributes that uniquely identifies a tuple. A <strong>candidate key</strong> is a minimal superkey — no proper subset is also a superkey. A <strong>primary key</strong> is the one candidate key chosen by the designer as the principal identifier. Example: in a users table, {user_id}, {email}, and {user_id, email} are all superkeys. {user_id} and {email} are candidate keys (both minimal). The designer picks {user_id} as PK and adds UNIQUE on email.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">Explain referential integrity and ON DELETE options.<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">Referential integrity means every non-null FK value must exist as a PK in the referenced table. When the parent row is deleted: <strong>ON DELETE CASCADE</strong> — delete all child rows automatically (useful for orders→items). <strong>ON DELETE SET NULL</strong> — set the FK to NULL (useful for optional relationships). <strong>ON DELETE RESTRICT / NO ACTION</strong> — reject the delete if child rows exist (safest default). <strong>ON DELETE SET DEFAULT</strong> — set to a default value. Choose based on the business rule: is a child row meaningful without its parent?</div></div>
+      <div class="qa-a"><div class="qa-a-inner">Referential integrity means every non-null FK value must exist as a PK in the referenced table. When the parent row is deleted: <strong>CASCADE</strong> deletes all child rows (useful for orders and items). <strong>SET NULL</strong> sets FK to NULL (useful for optional relationships). <strong>RESTRICT / NO ACTION</strong> rejects the delete if child rows exist (safest default). <strong>SET DEFAULT</strong> sets to a default value. Choose based on the business rule: is a child row meaningful without its parent?</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">What is the difference between INNER JOIN and CROSS JOIN?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">A <strong>CROSS JOIN</strong> is the Cartesian product — every row in table A combined with every row in table B. If A has 1,000 rows and B has 1,000 rows, the result has 1,000,000 rows. No ON clause. An <strong>INNER JOIN</strong> is a cross join plus a filter: only tuples where the join predicate is true survive. CROSS JOINs are rarely intentional in production and often indicate a missing ON clause. They're useful for generating test data or calendar tables.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">A CROSS JOIN is the Cartesian product — every row in table A combined with every row in table B. If A has 1,000 rows and B has 1,000 rows, the result has 1,000,000 rows. No ON clause. An INNER JOIN is a cross join plus a filter: only tuples where the join predicate is true survive. CROSS JOINs are rarely intentional in production — a missing ON clause in an INNER JOIN produces a CROSS JOIN accidentally. Useful for generating test data or date/product combinations.</div></div>
     </div>
     <div class="qa-item">
-      <div class="qa-q">What does relational algebra's closure property mean?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">Closure means every relational algebra operation takes one or more relations as input and produces a relation as output. This is powerful because it enables composition: you can nest operations arbitrarily, using the output of one operation as input to the next. SQL exploits this: subqueries, CTEs, and derived tables all rely on closure. Every SQL query produces a "virtual table" (result set) that can be treated as a relation for further querying.</div></div>
+      <div class="qa-q">What does the relational algebra closure property mean?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Closure means every relational algebra operation takes one or more relations as input and produces a relation as output. This enables composition: you can nest operations arbitrarily, using the output of one as input to the next. SQL exploits this: subqueries, CTEs, and derived tables all rely on closure. Every SQL query produces a "virtual table" that can be treated as a relation for further querying — that is why <code>SELECT * FROM (SELECT ...) AS sub</code> works.</div></div>
     </div>
     <div class="qa-item">
-      <div class="qa-q">Why does SQL use DISTINCT? Doesn't the relational model already eliminate duplicates?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">Strictly, yes — a relation is a set, so no duplicate tuples are allowed. But SQL is based on bags (multisets), not sets, for performance: eliminating duplicates requires sorting or hashing, which is expensive. So <code>SELECT</code> without <code>DISTINCT</code> can return duplicates. <code>SELECT DISTINCT</code> adds the deduplication step. This is a deliberate SQL deviation from pure relational theory — the tradeoff is performance over theoretical purity. For aggregations, duplicates are often intentional (you want to count all rows, not just unique ones).</div></div>
+      <div class="qa-q">Why does SQL use DISTINCT? Does not the relational model already eliminate duplicates?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Strictly, yes — a relation is a set, so no duplicate tuples are allowed. But SQL is based on bags (multisets), not sets, for performance: eliminating duplicates requires sorting or hashing, which is expensive. So SELECT without DISTINCT can return duplicates. SELECT DISTINCT adds the deduplication step. This is a deliberate SQL deviation from pure relational theory — the tradeoff is performance over theoretical purity. For aggregations, duplicates are often intentional (you want to COUNT all rows, not just unique ones).</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is entity integrity and why is NULL problematic in PKs?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Entity integrity requires primary key columns be non-null and unique. NULL means "unknown value" — two NULLs are not considered equal (NULL != NULL in SQL's three-valued logic). If a PK column is NULL, the row cannot be uniquely identified. The DBMS rejects NULL in PK columns (NOT NULL is implicit). In practice, use surrogate keys (BIGSERIAL, UUID v7) rather than natural keys that might be null or change over time such as email addresses.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How is a LEFT JOIN different from a subquery with NOT EXISTS?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Both express "left side with optional right side" but serve different patterns. <strong>LEFT JOIN</strong> retrieves data from both tables — you can SELECT columns from both. Common pattern: "give me all orders and their payments if they exist." <strong>NOT EXISTS</strong> finds rows in one table with no match in another: "give me customers who have never ordered" — you test for absence, not select from the second table. Performance: LEFT JOIN + WHERE right.col IS NULL is equivalent to NOT EXISTS but the optimizer may choose different plans. NOT EXISTS often optimizes better in PostgreSQL; NOT IN can behave unexpectedly if the subquery returns NULLs.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is a self-join and when would you use one?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A self-join joins a table to itself using aliases. Classic use: hierarchical or adjacency list structures. Example: <code>SELECT e.name, m.name AS manager FROM employees e JOIN employees m ON e.manager_id = m.id</code>. This retrieves each employee alongside their manager's name from the same table. Other uses: finding pairs of employees in the same department, comparing rows within the same table, or finding records that share a value. The DBMS treats the two aliases as two logical relations — same physical table, two logical names.</div></div>
     </div>
   </div>
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.cs.cmu.edu/~christos/COURSES/826.S03/HANDOUTS/codd72.pdf" target="_blank">📄 Codd's Original 1970 Paper</a>
+    <a class="reading-link" href="https://www.cs.cmu.edu/~christos/COURSES/826.S03/HANDOUTS/codd72.pdf" target="_blank">Codd's Original 1970 Paper</a>
     <a class="reading-link" href="https://en.wikipedia.org/wiki/Relational_algebra" target="_blank">Relational Algebra (Wikipedia)</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/ddl-constraints.html" target="_blank">PostgreSQL Constraints Documentation</a>
   </div>
 
   <div class="topic-nav">

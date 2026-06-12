@@ -16,7 +16,6 @@
     <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -37,11 +36,11 @@
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>InnoDB</strong>: B+tree clustered index, row-level locking, MVCC, WAL (redo log), buffer pool.</li>
-      <li><strong>WAL (Write-Ahead Log)</strong>: changes are logged before being applied to data pages. Enables redo recovery.</li>
-      <li><strong>LSM tree</strong>: writes go to an in-memory memtable, flushed to sorted SSTables. High write throughput, compaction cost.</li>
-      <li><strong>Buffer pool</strong>: LRU cache of disk pages in RAM. Hit rate target is 99%+ in production.</li>
-      <li><strong>Vacuum / compaction</strong>: reclaims space from deleted rows/versions. Critical for MVCC storage health.</li>
+      <li><strong>InnoDB</strong>B+tree clustered index, row-level locking, MVCC, WAL (redo log), buffer pool.</li>
+      <li><strong>WAL (Write-Ahead Log)</strong>changes are logged before being applied to data pages. Enables redo recovery.</li>
+      <li><strong>LSM tree</strong>writes go to an in-memory memtable, flushed to sorted SSTables. High write throughput, compaction cost.</li>
+      <li><strong>Buffer pool</strong>LRU cache of disk pages in RAM. Hit rate target is 99%+ in production.</li>
+      <li><strong>Vacuum / compaction</strong>reclaims space from deleted rows/versions. Critical for MVCC storage health.</li>
     </ul>
   </div>
 
@@ -69,6 +68,100 @@
     </div>
   </div>
 
+  <!-- ── Page Layout ────────────────────────────────────────── -->
+  <div class="section-label">Page Layout</div>
+  <h2 class="section-title">How Data Pages Work</h2>
+  <p class="section-desc">The page (also called a block) is the fundamental unit of I/O in a database engine — typically 4KB, 8KB, or 16KB. Everything the database reads from or writes to disk is in whole pages. Understanding page layout explains why certain operations are expensive and why fragmentation occurs.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Page structure</h4>
+        <p>Each page has: a page header (page number, free space pointer, LSN), the actual row data (slots growing from the start), a slot directory (offsets into the page, growing from the end), and free space in the middle. Rows are stored in slots; new rows occupy free space. When free space is exhausted, the page is full and a new page must be allocated.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Fill factor</h4>
+        <p>InnoDB's default fill factor is 15/16 (about 93%) for new pages — leaving ~7% free for future updates/inserts without requiring immediate page splits. PostgreSQL uses a configurable <code>fillfactor</code> storage parameter per table (default 100% for tables, 90% for indexes). Setting fillfactor to 70-80% on heavily updated tables reduces page splits and HOT (Heap Only Tuple) updates become more common.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>HOT updates (PostgreSQL)</h4>
+        <p>A Heap Only Tuple (HOT) update is possible when: (1) the new version fits on the same page as the old version, and (2) no indexed columns changed. In a HOT update, the index entry is NOT updated — a pointer chain inside the heap page links old to new. This dramatically reduces index maintenance overhead for UPDATE-heavy workloads. Regular VACUUM cleans up the pointer chain.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div>
+        <h4>Page fragmentation</h4>
+        <p>As rows are deleted and updated, pages develop fragmentation: half-empty pages with gaps between rows. This wastes I/O (each page read brings back less useful data) and wastes storage. PostgreSQL's VACUUM FULL and InnoDB's OPTIMIZE TABLE physically rewrite the table, compacting pages. This is expensive (full table scan + rewrite) and locks the table — use CONCURRENTLY/ONLINE variants where available.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── B+Tree vs LSM ───────────────────────────────────────── -->
+  <div class="section-label">Storage Model Comparison</div>
+  <h2 class="section-title">B+Tree vs LSM Tree</h2>
+
+  <div class="table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr><th>Property</th><th>B+Tree (InnoDB/PostgreSQL)</th><th>LSM Tree (RocksDB/Cassandra)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Write path</td><td>Random I/O to existing pages (in-place)</td><td>Sequential append to memtable, then SSTable</td></tr>
+        <tr><td>Read path</td><td>O(log n) — single B+tree traversal</td><td>Check memtable + L0..Ln SSTables (bloom filter skips)</td></tr>
+        <tr><td>Write amplification</td><td>Low — write page once</td><td>High — data written multiple times during compaction</td></tr>
+        <tr><td>Read amplification</td><td>Low — one path from root to leaf</td><td>Higher — may need to check multiple levels</td></tr>
+        <tr><td>Space amplification</td><td>Low (with VACUUM/OPTIMIZE)</td><td>Higher — multiple versions exist until compaction</td></tr>
+        <tr><td>Delete handling</td><td>Mark dead, VACUUM later</td><td>Tombstone record, compaction removes it</td></tr>
+        <tr><td>Best workload</td><td>Mixed read/write, random lookups, range scans</td><td>Write-heavy: logs, events, IoT telemetry, append-only</td></tr>
+        <tr><td>Used by</td><td>PostgreSQL, MySQL InnoDB, SQLite, Oracle</td><td>RocksDB, Cassandra, HBase, LevelDB, TiKV</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── LSM Compaction ──────────────────────────────────────── -->
+  <div class="section-label">LSM Internals</div>
+  <h2 class="section-title">LSM Tree and Compaction Strategies</h2>
+  <p class="section-desc">The LSM tree trades read performance for dramatically higher write throughput by converting random writes into sequential I/O. Understanding compaction is essential for tuning LSM-backed databases like Cassandra and RocksDB.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Memtable and immutable memtable</h4>
+        <p>All writes go to the active memtable (in-memory sorted structure, typically a skip list). When full (typically 64MB–256MB), it is converted to an immutable memtable and a new active memtable is created. The immutable memtable is flushed to disk as an SSTable in the background. A WAL (write-ahead log) provides durability for the in-memory data.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>SSTables and bloom filters</h4>
+        <p>An SSTable (Sorted String Table) is an immutable file of sorted key-value pairs. Each SSTable has a bloom filter — a probabilistic data structure that quickly answers "is key K definitely not in this file?" (with zero false negatives). On a point lookup, the bloom filter eliminates most SSTables with a single bit-array check, reducing I/O from O(files) to O(1) in the common case.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Leveled compaction (RocksDB default)</h4>
+        <p>SSTables are organized into levels (L0, L1, L2, ...). L0 receives fresh flushes — multiple L0 files may overlap in key range. Compaction merges L0 files into L1 (eliminating overlaps), L1 into L2, and so on. Each level is ~10× larger than the previous. This minimizes space amplification and read amplification at the cost of write amplification (data is rewritten at each level). Good for mixed workloads.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div>
+        <h4>Size-tiered compaction (Cassandra default)</h4>
+        <p>SSTables of similar size are merged together. All SSTables may contain overlapping key ranges. This minimizes write amplification but maximizes space and read amplification — on a read, potentially many SSTables must be checked. Best for write-heavy workloads where you rarely read back. Cassandra also offers Leveled Compaction (better reads, more I/O) and TWCS (Time-Window Compaction Strategy, excellent for time-series with natural TTL expiry).</p>
+      </div>
+    </div>
+  </div>
+
   <div class="section-label">How It Works</div>
   <h2 class="section-title">InnoDB Write Path</h2>
   <div class="steps">
@@ -81,19 +174,17 @@
 
   <div class="code-block">
     <div class="cb-header"><span class="cb-lang">SQL — InnoDB Configuration</span></div>
-    <pre><span class="cmt">-- Buffer pool: most important InnoDB tuning parameter
+    <pre><span class="cmt">Buffer pool: most important InnoDB tuning parameter
 -- Set to 70-80% of available RAM on dedicated DB servers</span>
 <span class="kw">SET</span> GLOBAL innodb_buffer_pool_size = <span class="num">8</span>G;
 
-<span class="cmt">-- WAL sync mode: 1 = safest (fsync on commit)</span>
-<span class="cmt">-- 0 = fastest (no fsync, risky), 2 = flush but no fsync</span>
-<span class="kw">SET</span> GLOBAL innodb_flush_log_at_trx_commit = <span class="num">1</span>;
+<span class="cmt">WAL sync mode: 1 = safest (fsync on commit)</span>
+<span class="cmt">0 = fastest (no fsync, risky), 2 = flush but no fsync</span>
+<span class="kw">SET</span> GLOBAL innodb_flush_log_at_trx_commit = <span class="num">1</span><span class="cmt">PostgreSQL: WAL configuration</span>
+<span class="cmt">wal_level = logical enables logical replication</span>
+<span class="cmt">checkpoint_completion_target = 0.9 spreads checkpoint I/O</span>
 
-<span class="cmt">-- PostgreSQL: WAL configuration</span>
-<span class="cmt">-- wal_level = logical enables logical replication</span>
-<span class="cmt">-- checkpoint_completion_target = 0.9 spreads checkpoint I/O</span>
-
-<span class="cmt">-- View dirty page stats (InnoDB)</span>
+<span class="cmt">View dirty page stats (InnoDB)</span>
 <span class="kw">SELECT</span> * <span class="kw">FROM</span> information_schema.INNODB_BUFFER_POOL_STATS\G</pre>
   </div>
 
@@ -105,9 +196,9 @@
     <div class="demo-header">
       <h3>Storage Page Layout</h3>
       <div class="demo-controls">
-        <button class="demo-btn" data-action="insert-row" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">+ INSERT Row</button>
-        <button class="demo-btn danger" data-action="delete-row">× DELETE Row</button>
-        <button class="demo-btn warn" data-action="vacuum">🧹 VACUUM</button>
+        <button class="demo-btn" data-action="insert-row" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">INSERT Row</button>
+        <button class="demo-btn danger" data-action="delete-row">DELETE Row</button>
+        <button class="demo-btn warn" data-action="vacuum">VACUUM</button>
       </div>
     </div>
     <div class="demo-canvas-wrap"></div>
@@ -178,13 +269,35 @@
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-num">Question 3 of 5</div>
       <div class="quiz-q-text">LSM trees are optimized for:</div>
       <div class="quiz-options">
-        <div class="quiz-option" data-correct="false" data-explanation="LSM trees can have slower reads than B-trees due to multi-level lookups."><span class="opt-letter">A</span>Read-heavy random lookup workloads</div>
-        <div class="quiz-option" data-correct="true" data-explanation="LSM trees convert random writes into sequential appends to an in-memory memtable (then sequential disk writes). This is dramatically faster than random B-tree page writes, making them ideal for write-heavy workloads."><span class="opt-letter">B</span>Write-heavy workloads where sequential write throughput matters</div>
-        <div class="quiz-option" data-correct="false" data-explanation="LSM trees write to memory first, then disk — they don't skip memory."><span class="opt-letter">C</span>Direct random access without memory buffering</div>
-        <div class="quiz-option" data-correct="false" data-explanation="LSM trees are not specifically optimized for JOINs."><span class="opt-letter">D</span>Complex multi-table JOIN operations</div>
+        <div class="quiz-option" data-correct="false" data-explanation="LSM trees can have slower reads than B-trees due to multi-level lookups — they are not optimized for read-heavy random access."><span class="opt-letter">A</span>Read-heavy random lookup workloads</div>
+        <div class="quiz-option" data-correct="true" data-explanation="LSM trees convert random writes into sequential appends to an in-memory memtable then sequential disk writes. This is dramatically faster than random B-tree page writes, making them ideal for write-heavy workloads like time-series, logs, and IoT data."><span class="opt-letter">B</span>Write-heavy workloads where sequential write throughput matters</div>
+        <div class="quiz-option" data-correct="false" data-explanation="LSM trees write to memory first, then sequential disk — the sequential disk write is the key advantage, not skipping memory."><span class="opt-letter">C</span>Direct random access without memory buffering</div>
+        <div class="quiz-option" data-correct="false" data-explanation="LSM trees are not specifically optimized for JOINs — relational databases with B+trees are better for complex joins."><span class="opt-letter">D</span>Complex multi-table JOIN operations</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 4 of 5</div>
+      <div class="quiz-q-text">What is the purpose of a bloom filter in an LSM-tree storage engine?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Bloom filters do not compress data — they are a probabilistic lookup structure."><span class="opt-letter">A</span>Compressing SSTable data to reduce disk usage</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Bloom filters do not sort data — SSTables are already sorted by construction."><span class="opt-letter">B</span>Sorting keys in an SSTable for binary search</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A bloom filter for each SSTable lets the database quickly check: 'Is this key definitely NOT in this file?' With zero false negatives, if the bloom filter says no, the SSTable is skipped entirely. This reduces point lookup I/O from O(files) to O(1) in the common case."><span class="opt-letter">C</span>Quickly determining if a key is definitely not in an SSTable, avoiding unnecessary I/O</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Bloom filters are read-time optimizations, not write-time buffers."><span class="opt-letter">D</span>Buffering writes before flushing to SSTable</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 5 of 5</div>
+      <div class="quiz-q-text">In PostgreSQL, a HOT (Heap Only Tuple) update avoids which expensive operation?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="WAL writes are always required for durability — HOT updates do not skip WAL."><span class="opt-letter">A</span>Writing a WAL record for the update</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A HOT update occurs when the new version fits on the same page AND no indexed columns changed. The index entries are NOT updated — a pointer chain in the heap page links old to new. This eliminates the O(indexes) index maintenance cost per update."><span class="opt-letter">B</span>Updating index entries — the index is not touched for HOT updates</div>
+        <div class="quiz-option" data-correct="false" data-explanation="HOT updates still create a new row version in the heap — they just skip the index update."><span class="opt-letter">C</span>Writing the new row version to the heap</div>
+        <div class="quiz-option" data-correct="false" data-explanation="MVCC versioning is still used for HOT updates — the old version's xmax is set and a new xmin is recorded."><span class="opt-letter">D</span>MVCC versioning of the row</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
@@ -194,7 +307,7 @@
   <div class="qa-section">
     <div class="qa-item">
       <div class="qa-q">How does crash recovery work in InnoDB (ARIES algorithm)?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">InnoDB uses the ARIES (Algorithm for Recovery and Isolation Exploiting Semantics) algorithm: (1) <strong>Analysis pass</strong>: scan the WAL from the last checkpoint to determine which pages were dirty (incomplete flushes) and which transactions were in-progress at the time of crash. (2) <strong>Redo pass</strong>: replay ALL WAL records from the last checkpoint, both committed and uncommitted. This restores the database to the exact state at crash time. (3) <strong>Undo pass</strong>: using undo logs, rollback any transactions that were in-progress (uncommitted) at crash time. ARIES's key innovation: "steal + no-force" — dirty pages CAN be flushed before commit (steal), and committed transactions DON'T need pages flushed before commit (no-force) — WAL provides durability.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">InnoDB uses the ARIES (Algorithm for Recovery and Isolation Exploiting Semantics) algorithm: (1) <strong>Analysis pass</strong>scan the WAL from the last checkpoint to determine which pages were dirty (incomplete flushes) and which transactions were in-progress at the time of crash. (2) <strong>Redo pass</strong>replay ALL WAL records from the last checkpoint, both committed and uncommitted. This restores the database to the exact state at crash time. (3) <strong>Undo pass</strong>using undo logs, rollback any transactions that were in-progress (uncommitted) at crash time. ARIES's key innovation: "steal + no-force" — dirty pages CAN be flushed before commit (steal), and committed transactions DON'T need pages flushed before commit (no-force) — WAL provides durability.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">What is VACUUM in PostgreSQL and why is it necessary?<span class="qa-chevron">▾</span></div>
@@ -210,7 +323,15 @@
     </div>
     <div class="qa-item">
       <div class="qa-q">What is the buffer pool and how should you tune it?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">The buffer pool (InnoDB) / shared_buffers (PostgreSQL) is an in-memory cache of database pages. All reads check the cache first. All writes modify the page in cache first (WAL ensures durability). Sizing: for InnoDB, set <code>innodb_buffer_pool_size</code> to 70–80% of available RAM on a dedicated DB server. For PostgreSQL, set <code>shared_buffers</code> to ~25% of RAM (PostgreSQL also benefits from the OS page cache for the rest). Monitor hit ratio: <code>innodb_buffer_pool_read_requests / innodb_buffer_pool_reads</code>. Below 99% hit rate is a red flag for read-heavy workloads. Eviction policy: LRU with a "young" and "old" list — bulk scans don't pollute the hot cache.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">The buffer pool (InnoDB) or shared_buffers (PostgreSQL) is an in-memory cache of database pages. All reads check the cache first. All writes modify pages in cache first — WAL ensures durability for the unflushed pages. Sizing: for InnoDB, set <code>innodb_buffer_pool_size</code> to 70–80% of RAM on a dedicated DB server. For PostgreSQL, set <code>shared_buffers</code> to ~25% of RAM — PostgreSQL also benefits from the OS page cache via effective_cache_size. Monitor hit ratio: <code>SELECT blks_hit / (blks_hit + blks_read)</code> from pg_stat_database — below 99% is a red flag for read-heavy workloads. InnoDB's LRU has "young" (recently accessed) and "old" (newly inserted) sub-lists to prevent bulk scans from evicting hot data.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is write amplification and why does it matter for SSD lifetime?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Write amplification is the ratio of actual bytes written to disk to the logical bytes written by the application. In a B+tree, a 100-byte update may write an entire 8KB page (80x amplification on small updates). In an LSM tree, compaction rewrites the same data multiple times across levels — a byte written to L1 is rewritten when merged to L2, and again to L3. Write amplification matters for SSDs because NAND flash cells have finite write endurance (typically 1,000–10,000 Program/Erase cycles). High write amplification — from WAL writes, B+tree page writes, and compaction — accelerates flash wear. In production: WAL alone on a busy PostgreSQL server can write 100GB/day; on a 1TB SSD with 3,000 P/E cycles, that's ~30GB total — the SSD would last ~8 years from WAL alone. High-write databases need enterprise SSDs with high endurance ratings or NVMe with over-provisioning.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How does RocksDB differ from LevelDB?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">RocksDB was forked from Google's LevelDB (2013, Facebook) with production workloads in mind. Key differences: (1) <strong>Concurrency:</strong> RocksDB supports multiple concurrent memtable writes and parallel compaction; LevelDB has a single global lock. (2) <strong>Compaction options:</strong> RocksDB adds Universal and FIFO compaction strategies in addition to Leveled; LevelDB only has Leveled. (3) <strong>Column families:</strong> RocksDB organizes data into separate column families (each with its own LSM tree), enabling different compaction and compression settings per logical table. LevelDB has a single key space. (4) <strong>Production hardening:</strong> backups, SST file ingestion, rate limiters, statistics. RocksDB is used as the storage layer for: CockroachDB, TiKV, MyRocks (MySQL), PebbleDB (CockroachDB's RocksDB replacement), Cassandra plugins. LevelDB is primarily used in Bitcoin Core and simpler embedded use cases.</div></div>
     </div>
   </div>
 

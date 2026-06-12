@@ -498,6 +498,30 @@ code {
 .antipattern h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.3rem; color: #F87171; }
 .antipattern p  { font-size: 0.88rem; color: var(--text-soft); line-height: 1.65; margin: 0; }
 
+/* ── Comparison grid (sharding, replication) ────────────────── */
+.comparison-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+  gap: 1rem; margin: 1.2rem 0 2rem;
+}
+.comparison-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.2rem 1.4rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.comparison-card:hover { border-color: var(--primary); box-shadow: 0 4px 20px rgba(124,58,237,0.1); }
+.comparison-card h4 { font-family: var(--font-display); font-size: 1rem; margin-bottom: 0.8rem; color: var(--primary-soft); }
+.comparison-card ul { padding-left: 1.2rem; margin: 0; }
+.comparison-card li { font-size: 0.85rem; color: var(--text-soft); line-height: 1.7; margin-bottom: 0.25rem; }
+
+/* ── Info box (callout for supplemental info) ───────────────── */
+.info-box {
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: var(--radius); padding: 1.2rem 1.5rem; margin: 1.4rem 0 2rem;
+}
+.info-box h4 { font-size: 0.95rem; font-weight: 600; color: var(--primary-soft); margin-bottom: 0.4rem; }
+.info-box p  { font-size: 0.87rem; color: var(--text-soft); line-height: 1.7; margin: 0; }
+
 /* ── Reading links ──────────────────────────────────────────── */
 .reading-links {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr));
@@ -629,9 +653,37 @@ code {
 }
 #hero-canvas {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 15%, black 35%);
-  mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 15%, black 35%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.5) 12%, black 30%);
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.5) 12%, black 30%);
 }
+
+/* CSS orb fallback (always rendered behind the canvas) */
+.hero-orbs { position: absolute; inset: 0; pointer-events: none; }
+.hero-orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(70px); opacity: 0.35;
+}
+.orb-1 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, #7C3AED 0%, transparent 70%);
+  top: 10%; left: 20%;
+  animation: orbFloat1 8s ease-in-out infinite;
+}
+.orb-2 {
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, #06B6D4 0%, transparent 70%);
+  bottom: 20%; right: 15%;
+  animation: orbFloat2 11s ease-in-out infinite;
+}
+.orb-3 {
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, #A78BFA 0%, transparent 70%);
+  top: 50%; left: 50%;
+  animation: orbFloat3 9s ease-in-out infinite;
+}
+@keyframes orbFloat1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-30px,40px) scale(1.1)} }
+@keyframes orbFloat2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(20px,-30px) scale(0.9)} }
+@keyframes orbFloat3 { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-50%) scale(1.15)} }
 .scroll-hint {
   position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center; gap: 0.3rem;

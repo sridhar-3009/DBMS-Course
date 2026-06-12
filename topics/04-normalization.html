@@ -16,7 +16,6 @@
     <div class="navbar-actions"><button class="btn-icon" id="theme-toggle" title="Toggle theme">&#9788;</button></div>
   </div>
 </nav>
-</div>
 
 <div class="container">
   <div class="breadcrumb">
@@ -28,201 +27,452 @@
   <div class="topic-header">
     <div class="topic-badge">Topic 04</div>
     <h1>Database <span class="accent">Normalization</span></h1>
-    <p class="subtitle">Eliminate redundancy and update anomalies by decomposing tables through functional dependency analysis — 1NF through BCNF, animated step by step.</p>
+    <p class="subtitle">Eliminate redundancy and update anomalies by decomposing tables through functional dependency analysis — 1NF through BCNF, with concrete before/after examples and the tradeoffs of going further.</p>
     <div class="company-badges">
       <span class="badge">MySQL</span><span class="badge">PostgreSQL</span><span class="badge">Oracle</span>
       <span class="badge">SQL Server</span>
     </div>
   </div>
 
-  <div class="section-label">Core Concepts</div>
-  <div class="mini-cards">
-    <div class="mini-card">
-      <div class="mini-card-icon"></div>
-      <h4>Functional Dependency</h4>
-      <p>A → B means knowing A's value uniquely determines B's value. E.g., student_id → student_name. The foundation of all normal forms.</p>
-    </div>
-    <div class="mini-card">
-      <div class="mini-card-icon"></div>
-      <h4>1NF — Atomic Values</h4>
-      <p>All attribute values must be atomic (indivisible). No multi-valued attributes (comma-separated lists), no repeating groups, each row uniquely identifiable.</p>
-    </div>
-    <div class="mini-card">
-      <div class="mini-card-icon"></div>
-      <h4>2NF — No Partial Dependencies</h4>
-      <p>Every non-key attribute must depend on the WHOLE primary key. Applies when PK is composite. Split tables so each non-key column depends on the full PK.</p>
-    </div>
-    <div class="mini-card">
-      <div class="mini-card-icon"></div>
-      <h4>3NF / BCNF — No Transitive Deps</h4>
-      <p>No non-key attribute should depend on another non-key attribute. BCNF is stricter: every functional dependency X→Y must have X as a superkey.</p>
-    </div>
-  </div>
-
-  <div class="section-label">How It Works</div>
-  <h2 class="section-title">Step-by-Step Normalization</h2>
-  <div class="steps">
-    <div class="step-item"><div class="step-num">1</div><div><h4>Identify Functional Dependencies</h4><p>List all FDs: which attribute(s) uniquely determine others? E.g., {order_id, product_id} → quantity, but order_id → customer_name (partial dep if PK is composite).</p></div></div>
-    <div class="step-item"><div class="step-num">2</div><div><h4>Check 1NF — Atomicity</h4><p>Replace multi-value cells (e.g., "Apple, Banana") with separate rows. Remove repeating column groups (item1, item2, item3 → normalize to item rows). Each cell = one value.</p></div></div>
-    <div class="step-item"><div class="step-num">3</div><div><h4>Check 2NF — Full Key Dependency</h4><p>With composite PK, identify which non-key columns depend on only part of the key. Extract those into a new table with the partial key as PK. Original table keeps the rest.</p></div></div>
-    <div class="step-item"><div class="step-num">4</div><div><h4>Check 3NF — Transitive Dependencies</h4><p>Find non-key → non-key chains: zip → city → state. Extract city/state into a separate zip_codes table with zip as PK. Only store zip in the original table.</p></div></div>
-    <div class="step-item"><div class="step-num">5</div><div><h4>BCNF — Stronger Form</h4><p>For every FD X→Y, X must be a superkey. 3NF allows Y to be a prime attribute (part of a candidate key); BCNF does not. Most tables in 3NF are also in BCNF.</p></div></div>
-  </div>
-
-  <div class="code-block">
-    <div class="cb-header"><span class="cb-lang">SQL — 3NF Decomposition</span></div>
-    <pre><span class="cmt">-- Denormalized: order_data(order_id, customer_name, customer_city, product, price)
--- FDs: order_id → customer_name, customer_city
---      customer_city → customer_state  (transitive via city!)
---      (order_id, product) → price</span>
-
-<span class="cmt">-- After 3NF normalization:</span>
-<span class="kw">CREATE TABLE</span> customers (
-  customer_id  <span class="fn">SERIAL</span> <span class="kw">PRIMARY KEY</span>,
-  name         <span class="fn">VARCHAR</span>(<span class="num">100</span>),
-  zip_code     <span class="fn">CHAR</span>(<span class="num">5</span>) <span class="kw">REFERENCES</span> zip_codes(zip)
-);
-<span class="kw">CREATE TABLE</span> zip_codes (
-  zip          <span class="fn">CHAR</span>(<span class="num">5</span>) <span class="kw">PRIMARY KEY</span>,
-  city         <span class="fn">VARCHAR</span>(<span class="num">100</span>),
-  state        <span class="fn">CHAR</span>(<span class="num">2</span>)
-);
-<span class="kw">CREATE TABLE</span> orders (
-  order_id     <span class="fn">SERIAL</span> <span class="kw">PRIMARY KEY</span>,
-  customer_id  <span class="fn">INT</span> <span class="kw">REFERENCES</span> customers
-);
-<span class="kw">CREATE TABLE</span> order_items (
-  order_id     <span class="fn">INT</span> <span class="kw">REFERENCES</span> orders,
-  product      <span class="fn">VARCHAR</span>(<span class="num">100</span>),
-  price        <span class="fn">NUMERIC</span>(<span class="num">10,2</span>),
-  <span class="kw">PRIMARY KEY</span>  (order_id, product)
-);</pre>
-  </div>
-
   <div class="at-a-glance reveal">
     <h3>At a Glance</h3>
     <ul>
-      <li><strong>1NF</strong>: atomic values, no repeating groups. Every cell holds a single value.</li>
-      <li><strong>2NF</strong>: no partial dependency — non-key columns depend on the <em>whole</em> primary key (only matters with composite keys).</li>
-      <li><strong>3NF</strong>: no transitive dependency — non-key columns depend only on the key, not on other non-key columns.</li>
-      <li><strong>BCNF</strong>: stricter than 3NF — every determinant is a candidate key. Eliminates all anomalies.</li>
-      <li>Denormalization is a deliberate performance trade-off, not a mistake — but start normalized.</li>
+      <li><strong>1NF</strong> — atomic values, no repeating groups. Every cell holds a single, indivisible value.</li>
+      <li><strong>2NF</strong> — no partial dependency. Non-key columns depend on the <em>whole</em> primary key (only matters with composite keys).</li>
+      <li><strong>3NF</strong> — no transitive dependency. Non-key columns depend only on the key, not on other non-key columns.</li>
+      <li><strong>BCNF</strong> — stricter than 3NF. Every functional dependency X&#8594;Y must have X as a superkey. Eliminates all remaining anomalies.</li>
+      <li>Denormalization is a deliberate performance trade-off, not a mistake — but always start normalized and measure before denormalizing.</li>
     </ul>
   </div>
 
-  <!-- Demo -->
+  <!-- ── Why Normalize ───────────────────────────────────────── -->
+  <div class="section-label">Motivation</div>
+  <h2 class="section-title">Update Anomalies — Why Redundancy Is Dangerous</h2>
+  <p class="section-desc">Redundancy in a relational schema is not just wasteful storage — it creates three types of update anomalies that silently corrupt data. Every normal form exists to eliminate one of these anomaly types.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Insert anomaly</h4>
+        <p>You cannot insert a fact without inserting an unrelated fact. In a table storing (order_id, customer_name, customer_city, product_name, price), you cannot add a new customer to the system until they place at least one order. The customer's existence is tied to a product fact.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Update anomaly</h4>
+        <p>The same fact is stored in multiple rows. If a customer moves cities, you must update every row in the order table that references that customer. Miss even one row and the database becomes inconsistent — different rows disagree on the same real-world fact.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Delete anomaly</h4>
+        <p>Deleting a row destroys unrelated information. Delete the last order for a customer and you lose the customer's city entirely — a fact that has nothing to do with orders. The coupling between facts forces you to either keep orphaned rows or lose real-world data.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Functional Dependencies ────────────────────────────── -->
+  <div class="section-label">Foundation</div>
+  <h2 class="section-title">Functional Dependencies</h2>
+  <p class="section-desc">A functional dependency (FD) A&#8594;B says: for any two rows in the table with the same value of A, they must have the same value of B. A uniquely determines B. FDs are the mathematical foundation for all normal forms. Normalization is the process of decomposing a relation so that each FD is "enforced" in exactly one table.</p>
+
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon"></div>
+      <h4>Full FD</h4>
+      <p>A &#8594; B where removing any attribute from A would break the dependency. E.g., {order_id, product_id} &#8594; quantity — both attributes are needed. Neither alone determines quantity.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon"></div>
+      <h4>Partial FD</h4>
+      <p>A &#8594; B where A is a composite key and only part of A determines B. E.g., {order_id, product_id} &#8594; customer_name — order_id alone determines customer_name. Violates 2NF.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon"></div>
+      <h4>Transitive FD</h4>
+      <p>A &#8594; B and B &#8594; C means A &#8594; C transitively. E.g., order_id &#8594; zip_code and zip_code &#8594; city — order_id &#8594; city is transitive. Violates 3NF.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon"></div>
+      <h4>Armstrong's Axioms</h4>
+      <p>Sound and complete inference rules for FDs: <em>Reflexivity</em> (B&#8838;A &#8658; A&#8594;B), <em>Augmentation</em> (A&#8594;B &#8658; AC&#8594;BC), <em>Transitivity</em> (A&#8594;B, B&#8594;C &#8658; A&#8594;C). Used to compute attribute closure F+.</p>
+    </div>
+  </div>
+
+  <!-- ── Normal Forms ───────────────────────────────────────── -->
+  <div class="section-label">1NF</div>
+  <h2 class="section-title">First Normal Form — Atomic Values</h2>
+  <p class="section-desc">A table is in 1NF if every column contains only atomic (single, indivisible) values and every row is unique. Violations: storing a list in a cell ("Apple, Banana"), repeating column groups (product1, product2, product3), or nested tables.</p>
+
+  <div class="table-wrap">
+    <table class="compare-table">
+      <thead><tr><th>Violation (Not 1NF)</th><th>Fix (1NF)</th></tr></thead>
+      <tbody>
+        <tr><td>tags = "sql,nosql,postgres" (list in one cell)</td><td>One row per tag: (post_id, tag) pairs in a separate table</td></tr>
+        <tr><td>item1, item2, item3 columns (repeating groups)</td><td>One item per row in an order_items table</td></tr>
+        <tr><td>address = "123 Main St, Springfield, IL" (compound)</td><td>street, city, state, zip as separate columns</td></tr>
+        <tr><td>phone_numbers = ["555-1234", "555-5678"] (array)</td><td>Separate user_phones table with (user_id, phone)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 2NF ────────────────────────────────────────────────── -->
+  <div class="section-label">2NF</div>
+  <h2 class="section-title">Second Normal Form — No Partial Dependencies</h2>
+  <p class="section-desc">A table in 1NF is also in 2NF if every non-key attribute depends on the FULL primary key — not just part of it. This only matters when the primary key is composite.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Identify the violation</h4>
+        <p>Table: <code>order_products(order_id, product_id, quantity, product_name, unit_price)</code>. PK is (order_id, product_id). But product_name and unit_price depend only on product_id — not on the full PK. That is a partial dependency: part of the composite key determines non-key attributes.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Decompose</h4>
+        <p>Extract the partially dependent attributes into a new table with the partial key as PK. Keep only the attributes that depend on the full key in the original table.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Result</h4>
+        <p><code>order_products(order_id, product_id, quantity)</code> — PK is full (order_id, product_id), and quantity genuinely needs both. <code>products(product_id, product_name, unit_price)</code> — product_id determines name and price independently. Now product_name changes in one place only.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3NF ────────────────────────────────────────────────── -->
+  <div class="section-label">3NF</div>
+  <h2 class="section-title">Third Normal Form — No Transitive Dependencies</h2>
+  <p class="section-desc">A table in 2NF is also in 3NF if no non-key attribute depends on another non-key attribute. Transitivity chain: PK &#8594; A &#8594; B means B is transitively dependent on the PK through A. Extract A and B into a separate table.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Identify the chain</h4>
+        <p>Table: <code>orders(order_id, customer_id, customer_name, customer_zip, city, state)</code>. order_id &#8594; customer_zip (direct). customer_zip &#8594; city (transitive via zip!). customer_zip &#8594; state (transitive). City and state depend on zip, not directly on order_id.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Decompose at the transitive link</h4>
+        <p>Create <code>zip_codes(zip, city, state)</code> where zip is the PK. Remove city and state from orders. Keep only zip in the orders table as a FK reference.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Result</h4>
+        <p><code>orders(order_id, customer_id, customer_zip)</code>. <code>zip_codes(zip, city, state)</code>. When a city name changes (e.g., a city renaming), update exactly one row in zip_codes — not thousands of order rows. The update anomaly is eliminated.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BCNF ───────────────────────────────────────────────── -->
+  <div class="section-label">BCNF</div>
+  <h2 class="section-title">Boyce-Codd Normal Form</h2>
+  <p class="section-desc">BCNF is stricter than 3NF: for every non-trivial FD X&#8594;Y, X must be a superkey. 3NF allows Y to be a prime attribute (part of a candidate key); BCNF does not. Most tables in 3NF are also in BCNF — violations are rare but occur when a table has multiple overlapping candidate keys.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Classic BCNF violation example</h4>
+        <p>Relation <code>R(student, course, teacher)</code> where: {student, course} is a candidate key; {student, teacher} is also a candidate key (each teacher teaches only one course, each student-teacher pair is unique). FD: teacher &#8594; course. But teacher is NOT a superkey — it only determines course, not the full tuple. This violates BCNF. In 3NF, this is allowed because course is a prime attribute.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>BCNF decomposition</h4>
+        <p>Split into <code>teacher_course(teacher, course)</code> (with teacher as PK — the determinant) and <code>student_teacher(student, teacher)</code>. Both are in BCNF. Tradeoff: the FD {student, course} &#8594; teacher is no longer enforceable in a single table — it must be re-derived via a join. BCNF may sacrifice dependency preservation, but never lossless-join decomposition.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>3NF vs BCNF tradeoff</h4>
+        <p>3NF always preserves all functional dependencies — useful when you need to enforce FDs via key constraints. BCNF eliminates all redundancy but may require application logic or triggers to enforce some FDs. In practice, target 3NF for OLTP schemas; BCNF only when specific anomalies are observed.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SQL Example ───────────────────────────────────────── -->
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL — Before and After 3NF Normalization</span></div>
+    <pre><span class="cmt">-- BEFORE: denormalized order table (multiple anomaly types)</span>
+<span class="cmt">-- order_data(order_id, cust_id, cust_name, cust_zip, city, state, product, price, qty)</span>
+<span class="cmt">-- FDs: order_id → cust_id, cust_name, cust_zip</span>
+<span class="cmt">--      cust_zip → city, state   (transitive via zip)</span>
+<span class="cmt">--      product → price          (partial dep on product alone)</span>
+<span class="cmt">--      (order_id, product) → qty (full dep on composite key)</span>
+
+<span class="cmt">-- AFTER: normalized to 3NF</span>
+<span class="kw">CREATE TABLE</span> zip_codes (
+  zip    <span class="fn">CHAR</span>(<span class="num">5</span>) <span class="kw">PRIMARY KEY</span>,
+  city   <span class="fn">VARCHAR</span>(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  state  <span class="fn">CHAR</span>(<span class="num">2</span>) <span class="kw">NOT NULL</span>
+);
+
+<span class="kw">CREATE TABLE</span> customers (
+  customer_id  <span class="fn">SERIAL</span> <span class="kw">PRIMARY KEY</span>,
+  name         <span class="fn">VARCHAR</span>(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  zip          <span class="fn">CHAR</span>(<span class="num">5</span>) <span class="kw">REFERENCES</span> zip_codes(zip)
+);
+
+<span class="kw">CREATE TABLE</span> products (
+  product_id   <span class="fn">SERIAL</span> <span class="kw">PRIMARY KEY</span>,
+  name         <span class="fn">VARCHAR</span>(<span class="num">200</span>) <span class="kw">NOT NULL</span>,
+  unit_price   <span class="fn">NUMERIC</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>
+);
+
+<span class="kw">CREATE TABLE</span> orders (
+  order_id     <span class="fn">SERIAL</span> <span class="kw">PRIMARY KEY</span>,
+  customer_id  <span class="fn">INT</span> <span class="kw">NOT NULL REFERENCES</span> customers(customer_id),
+  created_at   <span class="fn">TIMESTAMPTZ</span> <span class="kw">NOT NULL DEFAULT</span> now()
+);
+
+<span class="kw">CREATE TABLE</span> order_items (
+  order_id     <span class="fn">INT</span> <span class="kw">REFERENCES</span> orders(order_id),
+  product_id   <span class="fn">INT</span> <span class="kw">REFERENCES</span> products(product_id),
+  quantity     <span class="fn">INT</span> <span class="kw">NOT NULL CHECK</span> (quantity &gt; <span class="num">0</span>),
+  <span class="kw">PRIMARY KEY</span> (order_id, product_id)
+);
+
+<span class="cmt">-- Now city update: one row in zip_codes (was: thousands of order rows)</span>
+<span class="kw">UPDATE</span> zip_codes <span class="kw">SET</span> city = <span class="str">'New Springfield'</span> <span class="kw">WHERE</span> zip = <span class="str">'62701'</span>;
+<span class="cmt">-- Can add a customer before they place any order (no insert anomaly)</span>
+<span class="kw">INSERT INTO</span> customers (name, zip) <span class="kw">VALUES</span> (<span class="str">'Alice'</span>, <span class="str">'62701'</span>);
+<span class="cmt">-- Deleting an order doesn't lose customer data (no delete anomaly)</span>
+<span class="kw">DELETE FROM</span> orders <span class="kw">WHERE</span> order_id = <span class="num">42</span>;</pre>
+  </div>
+
+  <!-- ── OLAP Schemas ───────────────────────────────────────── -->
+  <div class="section-label">OLAP vs OLTP</div>
+  <h2 class="section-title">Star Schema and Denormalization for Analytics</h2>
+  <p class="section-desc">Normalization is ideal for OLTP (Online Transaction Processing) — frequent, small updates where redundancy causes anomalies. OLAP (Online Analytical Processing) workloads — bulk reads, aggregations, complex filters — benefit from controlled denormalization to reduce join counts.</p>
+
+  <div class="table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr><th>Property</th><th>Normalized (3NF) — OLTP</th><th>Star Schema — OLAP</th><th>Snowflake Schema — OLAP</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Redundancy</td><td>None — each fact stored once</td><td>Dimension tables denormalized</td><td>Dimension tables normalized</td></tr>
+        <tr><td>Join count</td><td>Many (4–10 per report query)</td><td>Few (fact + dimension tables)</td><td>More than star (dimension hierarchies)</td></tr>
+        <tr><td>Update anomalies</td><td>None</td><td>Possible in dimensions</td><td>Reduced vs star</td></tr>
+        <tr><td>Query speed</td><td>Slower (more joins)</td><td>Fast (fewer joins)</td><td>Between star and normalized</td></tr>
+        <tr><td>Storage size</td><td>Smallest</td><td>Larger (dimension data repeated)</td><td>Between</td></tr>
+        <tr><td>Typical use</td><td>Transactional apps, RDBMS core</td><td>Snowflake, BigQuery, Redshift fact tables</td><td>Enterprise data warehouses</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Star schema structure</h4>
+        <p>One central fact table (measurements: sales_amount, quantity_sold) with foreign keys to multiple dimension tables (date, product, customer, store). Dimension tables are intentionally denormalized — they store all attributes of the dimension, even if those attributes are themselves functionally related. Example: dim_product stores (product_id, name, category, subcategory, brand, manufacturer) even though subcategory &#8594; category is a transitive dependency. Fewer joins means BI tools respond faster.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Slowly Changing Dimensions (SCD)</h4>
+        <p>When dimension data changes (customer changes address, product changes category), you have a choice: Type 1 — overwrite (lose history), Type 2 — add a new row with valid_from/valid_to timestamps (full history), Type 3 — add a new column for previous value (limited history). SCD Type 2 is most common in enterprise DW — every historical sale records the product's category as it was at the time of sale.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Interactive Demo ───────────────────────────────────── -->
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">Normalization Animator</h2>
-  <p class="section-desc">Start with a denormalized table with 1NF violations (red). Step through normalization. Each step shows table decomposition animated.</p>
+  <p class="section-desc">Start with a denormalized table with 1NF violations (red cells). Step through normalization. Each step shows the table decomposition animated on the canvas.</p>
 
   <div class="demo-section" id="demo-normalization">
     <div class="demo-header">
       <h3>Normalization Steps</h3>
       <div class="demo-controls">
-        <button class="demo-btn" data-action="next-norm">Next Step →</button>
-        <button class="demo-btn" data-action="reset-norm">↩ Reset</button>
+        <button class="demo-btn" data-action="next-norm">Next Step &#8594;</button>
+        <button class="demo-btn" data-action="reset-norm">Reset</button>
       </div>
     </div>
     <div class="demo-canvas-wrap"></div>
     <div class="demo-stats">
-      <div class="demo-stat">Steps: D → 1NF → 2NF → 3NF</div>
+      <div class="demo-stat">Steps: D &#8594; 1NF &#8594; 2NF &#8594; 3NF</div>
       <div class="demo-stat">Red values = 1NF violations</div>
     </div>
   </div>
 
-  <div class="info-box">
-    <h4>When to Denormalize</h4>
-    <p>Normalization is right for OLTP (transactional) workloads. OLAP / reporting workloads often benefit from star/snowflake schemas with controlled denormalization — fewer JOINs mean faster analytical queries. Always profile first; never denormalize without a measured performance problem.</p>
+  <!-- ── Denormalization ────────────────────────────────────── -->
+  <div class="section-label">Denormalization</div>
+  <h2 class="section-title">When to Denormalize Deliberately</h2>
+  <p class="section-desc">Denormalization is the deliberate introduction of redundancy for a performance reason. It is not a failure of design — it is a conscious trade-off. The prerequisite is always a measured performance problem, not an assumption.</p>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Cached aggregates</h4>
+        <p>Store a pre-computed count or sum on the parent row. Example: <code>users.order_count</code> updated by a trigger or application code on every order insert/delete. Queries that need order_count avoid a <code>COUNT(*)</code> aggregate across all orders. Maintained via triggers or background jobs; document the denormalization contract clearly.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Materialized views</h4>
+        <p>A materialized view stores the result of a query on disk. Queries hit the materialized view instead of the base tables — no join overhead. PostgreSQL's <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> updates it without blocking readers. Use for expensive aggregations and reports that run frequently but whose data changes infrequently (dashboards, leaderboards, reporting tables).</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Embedding for NoSQL</h4>
+        <p>In MongoDB/Cassandra, related data is embedded in a single document/row rather than normalized across collections. This trades update overhead for read speed — the entire object is retrieved in one I/O. Use embedding when the embedded data is always read with the parent, rarely updated independently, and bounded in size. Use references (normalization equivalent) when the embedded data has its own identity and lifecycle.</p>
+      </div>
+    </div>
   </div>
 
+  <!-- ── Anti-patterns ──────────────────────────────────────── -->
   <div class="section-label">Anti-patterns</div>
   <div class="antipatterns">
     <div class="antipattern">
-      <h4>Storing comma-separated values in a single column</h4>
-      <p>tags = "sql,database,postgres" violates 1NF. Can't index individual values, can't enforce FK constraints, string parsing in queries is error-prone and slow.</p>
+      <h4>Comma-separated values in a single column</h4>
+      <p><code>tags = "sql,database,postgres"</code> violates 1NF. You cannot index individual values, enforce FK constraints, or query a specific tag without string parsing. Use a separate tags table with (entity_id, tag) rows. If using PostgreSQL, an array column with a GIN index is the pragmatic middle ground.</p>
     </div>
     <div class="antipattern">
-      <h4>Denormalizing "for performance" without profiling first</h4>
-      <p>Redundancy creates update anomalies: update customer's city in 10,000 order rows vs 1 customer row. The JOIN is usually fast enough; the update anomaly is always costly.</p>
+      <h4>Denormalizing without profiling first</h4>
+      <p>The JOIN between two indexed tables is usually fast (milliseconds). The update anomaly from storing customer city in every order row is always costly (potentially thousands of rows per update, inconsistency risk). Prove the JOIN is actually the bottleneck with EXPLAIN ANALYZE before adding redundancy.</p>
     </div>
     <div class="antipattern">
       <h4>Over-normalizing OLAP schemas</h4>
-      <p>Pushing to 6NF in reporting databases means dozens of JOINs per analytical query. Snowflake schemas over-normalized hurt BI tool performance. Dimension tables are intentionally denormalized in star schemas.</p>
+      <p>Pushing an analytical schema to 3NF or beyond means dozens of JOINs per reporting query. BI tools and analysts struggle with complex join paths. Star schemas intentionally stop at controlled denormalization — dimension tables are not normalized. Know your workload before choosing the schema pattern.</p>
+    </div>
+    <div class="antipattern">
+      <h4>Encoding multiple facts in one column</h4>
+      <p><code>status = "paid_shipped"</code> encodes two facts (payment status and shipping status) in one column. When payment or shipping logic changes independently, you must parse and rewrite the encoding. Use two separate boolean or enum columns — one for payment_status, one for shipping_status.</p>
     </div>
   </div>
 
+  <!-- ── Quiz ──────────────────────────────────────────────── -->
   <div class="section-label">Quiz</div>
   <div class="quiz-section">
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-num">Question 1 of 5</div>
       <div class="quiz-q-text">First Normal Form (1NF) requires that all attribute values are:</div>
       <div class="quiz-options">
-        <div class="quiz-option" data-correct="false" data-explanation="2NF eliminates partial dependencies. 1NF is specifically about atomicity."><span class="opt-letter">A</span>Free of partial key dependencies</div>
-        <div class="quiz-option" data-correct="false" data-explanation="Composite keys are fine in 1NF; the issue is multi-valued attributes."><span class="opt-letter">B</span>Based on a single-column primary key</div>
-        <div class="quiz-option" data-correct="true" data-explanation="1NF requires each attribute value to be atomic — indivisible. No sets, lists, or repeating groups in a single cell."><span class="opt-letter">C</span>Atomic — each cell contains a single, indivisible value</div>
-        <div class="quiz-option" data-correct="false" data-explanation="Equal to the primary key describes something unique, not atomicity."><span class="opt-letter">D</span>Equal in count to the primary key attributes</div>
+        <div class="quiz-option" data-correct="false" data-explanation="2NF eliminates partial dependencies. 1NF is specifically about atomicity of values."><span class="opt-letter">A</span>Free of partial key dependencies</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Composite keys are perfectly fine in 1NF — the issue is multi-valued attributes in cells."><span class="opt-letter">B</span>Based on a single-column primary key</div>
+        <div class="quiz-option" data-correct="true" data-explanation="1NF requires each attribute value to be atomic — a single, indivisible value. No sets, lists, arrays, or repeating groups in a single cell. Each row must be uniquely identifiable."><span class="opt-letter">C</span>Atomic — each cell contains a single, indivisible value</div>
+        <div class="quiz-option" data-correct="false" data-explanation="This describes uniqueness, not atomicity. 1NF requires both, but atomicity is the defining criterion."><span class="opt-letter">D</span>Equal in count to the primary key attributes</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-num">Question 2 of 5</div>
       <div class="quiz-q-text">Which normal form eliminates transitive functional dependencies?</div>
       <div class="quiz-options">
-        <div class="quiz-option" data-correct="false" data-explanation="1NF addresses atomicity, not transitive dependencies."><span class="opt-letter">A</span>1NF</div>
-        <div class="quiz-option" data-correct="false" data-explanation="2NF eliminates partial dependencies (non-key depending on part of composite key)."><span class="opt-letter">B</span>2NF</div>
-        <div class="quiz-option" data-correct="true" data-explanation="3NF requires that no non-key attribute transitively depends on the primary key through another non-key attribute. E.g., order_id → zip → city is transitive; zip should be in a separate table."><span class="opt-letter">C</span>3NF</div>
-        <div class="quiz-option" data-correct="false" data-explanation="BCNF is stricter than 3NF but the term 'transitive dependencies' refers to 3NF."><span class="opt-letter">D</span>BCNF</div>
+        <div class="quiz-option" data-correct="false" data-explanation="1NF addresses atomicity of values, not transitive dependencies."><span class="opt-letter">A</span>1NF</div>
+        <div class="quiz-option" data-correct="false" data-explanation="2NF eliminates partial dependencies — non-key columns depending on only part of a composite key."><span class="opt-letter">B</span>2NF</div>
+        <div class="quiz-option" data-correct="true" data-explanation="3NF eliminates transitive dependencies: non-key column A depends on non-key column B which depends on the key. The chain key → B → A is transitive; A should be in a separate table keyed by B."><span class="opt-letter">C</span>3NF</div>
+        <div class="quiz-option" data-correct="false" data-explanation="BCNF is stricter than 3NF — it eliminates all remaining anomalies where a determinant is not a superkey. But the term 'transitive dependencies' maps to 3NF."><span class="opt-letter">D</span>BCNF</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
     <div class="quiz-question">
-      <div class="quiz-q-num">Question 3 of 3</div>
-      <div class="quiz-q-text">A functional dependency A → B means:</div>
+      <div class="quiz-q-num">Question 3 of 5</div>
+      <div class="quiz-q-text">A functional dependency A &#8594; B means:</div>
       <div class="quiz-options">
-        <div class="quiz-option" data-correct="false" data-explanation="That's B → A (the reverse dependency)."><span class="opt-letter">A</span>B determines A</div>
-        <div class="quiz-option" data-correct="true" data-explanation="A → B means: for any two tuples with the same A value, they must also have the same B value. A uniquely determines B."><span class="opt-letter">B</span>Each A value uniquely determines the corresponding B value</div>
-        <div class="quiz-option" data-correct="false" data-explanation="A and B having the same values describes equality, not a functional dependency."><span class="opt-letter">C</span>A and B always contain identical values</div>
-        <div class="quiz-option" data-correct="false" data-explanation="B being a primary key is a separate constraint, unrelated to the definition of FD."><span class="opt-letter">D</span>B is always the primary key of its relation</div>
+        <div class="quiz-option" data-correct="false" data-explanation="That is B &#8594; A — the reverse dependency. The arrow direction matters."><span class="opt-letter">A</span>B determines A</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A &#8594; B means: for any two rows with the same A value, they must also have the same B value. Knowing A uniquely determines B. Example: student_id &#8594; student_name."><span class="opt-letter">B</span>Each A value uniquely determines the corresponding B value</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A and B having equal values in every row would be a trivial FD or an equality constraint — not the general definition."><span class="opt-letter">C</span>A and B always contain identical values in every row</div>
+        <div class="quiz-option" data-correct="false" data-explanation="B being a primary key is a separate constraint. B can be a non-key attribute in a functional dependency."><span class="opt-letter">D</span>B is always the primary key of its relation</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 4 of 5</div>
+      <div class="quiz-q-text">Table: (order_id, product_id, quantity, product_name). PK is (order_id, product_id). What normal form violation exists?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="1NF violations are about non-atomic values in cells — this table has no multi-valued cells."><span class="opt-letter">A</span>1NF — non-atomic values</div>
+        <div class="quiz-option" data-correct="true" data-explanation="product_name depends only on product_id, not on the full composite key (order_id, product_id). This is a partial dependency — product_name should be in a separate products table with product_id as PK. Violates 2NF."><span class="opt-letter">B</span>2NF — partial dependency (product_name depends only on product_id)</div>
+        <div class="quiz-option" data-correct="false" data-explanation="3NF violations involve non-key &#8594; non-key transitive chains. Here the issue is simpler: a non-key column depending on only part of the composite key."><span class="opt-letter">C</span>3NF — transitive dependency</div>
+        <div class="quiz-option" data-correct="false" data-explanation="BCNF violations require that a determinant is not a superkey — the issue here is more basic (partial dependency in 2NF terms)."><span class="opt-letter">D</span>BCNF — determinant is not a superkey</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 5 of 5</div>
+      <div class="quiz-q-text">In a star schema (used in data warehousing), dimension tables are intentionally:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Star schemas use dimensional tables which may be intentionally denormalized — not 4NF normalized."><span class="opt-letter">A</span>Normalized to 4NF</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Having no keys at all would make the tables unusable. Dimension tables always have a surrogate key."><span class="opt-letter">B</span>Without primary keys</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Star schema dimension tables are intentionally denormalized — they store all attributes including those with transitive dependencies — to reduce join count in analytical queries. Fewer joins mean faster BI queries. The update anomaly risk is accepted because dimension data changes infrequently."><span class="opt-letter">C</span>Denormalized to reduce join count in analytical queries</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Dimension tables are NOT split by normal forms in a star schema — that is the snowflake schema approach, and even then it is a partial normalization."><span class="opt-letter">D</span>Split per normal form violation into hundreds of tables</div>
       </div>
       <div class="quiz-feedback"></div>
     </div>
   </div>
 
-  <div class="section-label">Interview Q&A</div>
+  <!-- ── Interview Q&A ──────────────────────────────────────── -->
+  <div class="section-label">Interview Q&amp;A</div>
   <div class="qa-section">
     <div class="qa-item">
       <div class="qa-q">What are the three types of update anomalies in a denormalized table?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner"><strong>Insert anomaly:</strong> can't insert a fact without inserting an unrelated fact. E.g., can't add a new department to the order table without also having an order. <strong>Update anomaly:</strong> the same fact stored redundantly in multiple rows — update customer city in one row and it's inconsistent with others. <strong>Delete anomaly:</strong> deleting a row destroys unrelated information. E.g., deleting the last order for a customer deletes the customer's address too. Normalization solves all three by storing each fact exactly once.</div></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Insert anomaly:</strong> you cannot add a fact without adding an unrelated fact. In a table that stores order + customer data in the same row, you cannot add a new customer until they place an order — the customer's existence is coupled to the order existence. <strong>Update anomaly:</strong> the same fact stored in multiple rows must be updated in all of them. Change a customer's city and you must update every order row for that customer. Miss one and the database becomes inconsistent. <strong>Delete anomaly:</strong> deleting a row destroys unrelated information. Delete the last order for a customer and you lose the customer's address — a fact that has nothing to do with orders. Normalization solves all three by storing each fact in exactly one place.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">Explain the difference between 3NF and BCNF with an example.<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">3NF allows a non-key attribute to determine a prime attribute (one that's part of a candidate key). BCNF does not — every determinant must be a superkey. Example: a relation R(student, course, teacher) where each teacher teaches one course ({teacher} → {course}) and {student, course} is a CK. The FD teacher→course violates BCNF (teacher is not a superkey) but satisfies 3NF (course is a prime attribute). BCNF decomposition: split into (teacher, course) and (student, teacher). Tradeoff: BCNF decomposition may not preserve all functional dependencies; 3NF always does.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">3NF allows a non-key attribute to determine a prime attribute (part of a candidate key) — as long as the determinant is not a non-prime attribute. BCNF does not — every determinant must be a superkey, period. Example: R(student, course, teacher) where each teacher teaches one course. Candidate keys: {student, course} and {student, teacher}. FD: teacher &#8594; course. Teacher is not a superkey (teacher alone doesn't uniquely identify a row). This violates BCNF. But 3NF allows it because course is a prime attribute (part of the first CK). BCNF decomposition: split into (teacher, course) and (student, teacher). Tradeoff: the FD {student, course} &#8594; teacher is no longer enforceable via a single table constraint — you lose dependency preservation. 3NF always preserves dependencies; BCNF may not.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">When would you intentionally denormalize and how do you manage the risks?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">Denormalize when: (1) profiling shows JOIN cost is the bottleneck (rare for OLTP). (2) Read-heavy OLAP workloads where update anomalies are tolerable. (3) Caching computed aggregates (e.g., order_count on users table — update via trigger or background job). Management strategies: use database triggers to keep denormalized data in sync; use materialized views; do batch reconciliation jobs; document the denormalization contract clearly. Never denormalize based on intuition — always measure.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">Denormalize when: (1) EXPLAIN ANALYZE proves the JOIN is the actual bottleneck, not a hypothetical one. (2) Read-heavy OLAP workloads where update anomalies are rare and tolerable. (3) Caching computed aggregates — e.g., storing order_count on the users table updated by triggers or background jobs. Management strategies: use database triggers to keep denormalized columns in sync; use materialized views with scheduled refreshes; document the denormalization explicitly in the schema DDL (comments); write integration tests that verify the denormalized data matches the normalized source. Never denormalize based on intuition — the JOIN is almost always fast enough for OLTP. Denormalization is a last resort, not a starting point.</div></div>
     </div>
     <div class="qa-item">
-      <div class="qa-q">What is Armstrong's Axioms and why are they important?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">Armstrong's Axioms are a sound and complete set of inference rules for deriving all functional dependencies from a given set: (1) <strong>Reflexivity:</strong> if B ⊆ A then A→B (trivial FD). (2) <strong>Augmentation:</strong> if A→B then AC→BC. (3) <strong>Transitivity:</strong> if A→B and B→C then A→C. Derived rules: Union (if A→B and A→C then A→BC), Decomposition, and Pseudo-transitivity. They're important for computing closure of attributes (F+) — used to find all candidate keys and verify normal forms algorithmically.</div></div>
+      <div class="qa-q">What is Armstrong's Axioms and how are they used in practice?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Armstrong's Axioms are a sound and complete set of inference rules for deriving all FDs from a given set F: (1) <strong>Reflexivity:</strong> if B &#8838; A then A &#8594; B (trivial FD). (2) <strong>Augmentation:</strong> if A &#8594; B then AC &#8594; BC. (3) <strong>Transitivity:</strong> if A &#8594; B and B &#8594; C then A &#8594; C. Derived rules: Union (A&#8594;B and A&#8594;C &#8658; A&#8594;BC), Decomposition, Pseudo-transitivity. In practice, they are used to compute attribute closure F+ — given a set of attributes X, what is the set of all attributes that X functionally determines? The closure X+ is used to: determine if X is a candidate key (if X+ = all attributes); identify all candidate keys; verify whether a proposed decomposition is in 3NF or BCNF.</div></div>
     </div>
     <div class="qa-item">
       <div class="qa-q">What is a lossless-join decomposition and why does it matter?<span class="qa-chevron">▾</span></div>
-      <div class="qa-a"><div class="qa-a-inner">A decomposition of relation R into R1 and R2 is lossless if R1 ⋈ R2 = R — no spurious tuples are introduced by the join. If the decomposition is lossy, you can't reconstruct the original data, which means information is destroyed. Condition: R1 ∩ R2 must be a superkey of either R1 or R2. All normal form decompositions (to 3NF, BCNF) should be lossless-join. The related property — dependency preservation — ensures all FDs are enforceable in at least one decomposed table. BCNF may sacrifice dependency preservation but never lossless-join.</div></div>
+      <div class="qa-a"><div class="qa-a-inner">A decomposition of R into R1 and R2 is lossless-join if natural joining R1 and R2 always gives back exactly R — no spurious (extra phantom) tuples, no missing tuples. If a decomposition is lossy, you cannot reconstruct the original relation — information is permanently destroyed. The lossless-join condition: the intersection of R1 and R2 attributes must be a superkey of either R1 or R2. All standard normal form decompositions (1NF through BCNF) must be lossless-join — that is the fundamental requirement. A related but separate property is dependency preservation — all FDs from the original relation can be enforced in at least one decomposed relation without needing a join. 3NF decomposition is always lossless-join AND dependency-preserving. BCNF is always lossless-join but may sacrifice dependency preservation.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is a star schema and how does it differ from a normalized OLTP schema?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A star schema has one central fact table (sales, events, orders) surrounded by dimension tables (date, product, customer, geography). Dimension tables are intentionally denormalized — all attributes of a dimension are stored in one wide table, even if they have transitive dependencies internally (e.g., subcategory &#8594; category &#8594; department stored in one dim_product table). This reduces join count: a query needs to join the fact table with only a few dimension tables, not dozens of normalized tables. An OLTP normalized schema has many small tables with clean FDs — optimized for INSERT/UPDATE/DELETE correctness and avoiding anomalies. OLAP schemas optimize for read query performance over update correctness. Key insight: the choice of schema is driven by the workload, not by a universal "best practice."</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is 4NF and when does it apply?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">4NF eliminates multi-valued dependencies (MVDs). An MVD A &#8609; B means: for each value of A, the set of B values is independent of the set of C values (all other attributes). Example: R(employee, skill, language) where employee has a set of skills and a set of languages independently. If an employee has skills {Python, SQL} and languages {English, French}, we must store all 4 combinations — (emp, Python, English), (emp, Python, French), etc. This is a multi-valued dependency, not an FD. 4NF: decompose into (employee, skill) and (employee, language) — now each fact is independent. 4NF is rare in practice — most schema design doesn't encounter true MVDs — but it occasionally appears in many-to-many junction tables with multiple independent dimensions.</div></div>
     </div>
   </div>
 
   <div class="section-label">Further Reading</div>
   <div class="reading-links">
-    <a class="reading-link" href="https://www.studocu.com/en-us/document/university-of-illinois-at-urbana-champaign/database-systems/normalization" target="_blank">Normal Forms Reference</a>
-    <a class="reading-link" href="https://www.youtube.com/watch?v=GFQaEYEc8_8" target="_blank">1NF 2NF 3NF BCNF (YouTube)</a>
+    <a class="reading-link" href="https://www.bkent.net/Doc/simple5.htm" target="_blank">A Simple Guide to Five Normal Forms (Kent 1983)</a>
+    <a class="reading-link" href="https://www.youtube.com/watch?v=GFQaEYEc8_8" target="_blank">1NF 2NF 3NF BCNF Explained (YouTube)</a>
+    <a class="reading-link" href="https://en.wikipedia.org/wiki/Boyce%E2%80%93Codd_normal_form" target="_blank">Boyce-Codd Normal Form (Wikipedia)</a>
   </div>
 
   <div class="topic-nav">
-    <a href="03-sql.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">SQL Fundamentals</div></div></a>
-    <a href="05-transactions.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Transactions &amp; ACID</div></div></a>
+    <a href="03-sql.html" class="topic-nav-link"><div class="topic-nav-arrow">&#8592;</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">SQL Fundamentals</div></div></a>
+    <a href="05-transactions.html" class="topic-nav-link next"><div class="topic-nav-arrow">&#8594;</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Transactions &amp; ACID</div></div></a>
   </div>
 </div>
+
+<footer class="site-footer">
+  <p class="footer-sub"><a href="../index.html">Back to Course</a> &mdash; DBMS Illustrated</p>
+</footer>
 
 <script src="../js/main.js"></script>
 <script src="../js/demos.js"></script>
