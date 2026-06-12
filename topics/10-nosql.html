@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NoSQL Databases — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#84CC16}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span><span>NoSQL Databases</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 10</div>
+    <h1>NoSQL <span class="accent">Databases</span></h1>
+    <p class="subtitle">Document, key-value, column-family, and graph stores — CAP theorem, eventual consistency, and when to reach for NoSQL over relational databases.</p>
+    <div class="company-badges">
+      <span class="badge">MongoDB</span><span class="badge">Cassandra</span><span class="badge">Redis</span>
+      <span class="badge">DynamoDB</span><span class="badge">Couchbase</span><span class="badge">Neo4j</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">📋</div>
+      <h4>CAP Theorem</h4>
+      <p>In a distributed system, you can guarantee at most 2 of 3: Consistency (all nodes see same data), Availability (every request gets a response), Partition Tolerance (system works despite network splits).</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📁</div>
+      <h4>Document Store</h4>
+      <p>Store JSON/BSON documents with flexible schema. No JOIN needed — embed related data. Great for hierarchical data, user profiles, catalogs. MongoDB, Couchbase, Firestore.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📊</div>
+      <h4>Wide-Column Store</h4>
+      <p>Rows identified by a key; columns can differ per row. Column families stored together on disk — efficient for reading specific columns across many rows. Cassandra, HBase, Bigtable.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">⚡</div>
+      <h4>Eventual Consistency</h4>
+      <p>Updates propagate asynchronously across replicas. All replicas will converge to the same value — eventually. Trades immediate consistency for availability and partition tolerance.</p>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">CAP Theorem Trade-offs</h2>
+  <div class="steps">
+    <div class="step-item"><div class="step-num">C</div><div><h4>Consistency</h4><p>Every read gets the most recent write. Requires synchronous replication or consensus before acknowledging writes. Examples: traditional RDBMS in single-node, Zookeeper, HBase.</p></div></div>
+    <div class="step-item"><div class="step-num">A</div><div><h4>Availability</h4><p>Every request receives a response (success or failure) even during failures. No guarantee the response is the latest data. CouchDB, Cassandra (tunable), DynamoDB.</p></div></div>
+    <div class="step-item"><div class="step-num">P</div><div><h4>Partition Tolerance</h4><p>System continues operating when network partitions split nodes. ALL distributed systems MUST tolerate partitions — P is not really a choice. Real choice: C vs A when partitioned.</p></div></div>
+    <div class="step-item"><div class="step-num">✦</div><div><h4>PACELC Extension</h4><p>When no partition (normal operation): choose between Latency and Consistency. DynamoDB: PA/EL. Spanner: PC/EC. This is more realistic than CAP for day-to-day tradeoffs.</p></div></div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Type</th><th>Examples</th><th>Data Model</th><th>Best For</th><th>Weak At</th></tr></thead>
+      <tbody>
+        <tr><td>Document</td><td>MongoDB, Couchbase</td><td>JSON/BSON docs</td><td>Flexible schemas, nested data</td><td>Multi-doc transactions, complex JOINs</td></tr>
+        <tr><td>Key-Value</td><td>Redis, DynamoDB</td><td>Key → blob</td><td>Caching, sessions, leaderboards</td><td>Querying by value fields</td></tr>
+        <tr><td>Wide-Column</td><td>Cassandra, HBase</td><td>Row key + dynamic cols</td><td>Time-series, write-heavy IoT</td><td>Complex queries, JOINs</td></tr>
+        <tr><td>Graph</td><td>Neo4j, TigerGraph</td><td>Nodes + edges</td><td>Social graphs, recommendations</td><td>Tabular analytics</td></tr>
+        <tr><td>Search</td><td>Elasticsearch</td><td>Inverted index</td><td>Full-text search, logs, metrics</td><td>Transactional writes</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">Document vs Column Store Comparison</h2>
+  <p class="section-desc">Compare how a query for a specific column is handled differently in a document store (reads entire document) vs a column store (reads only target column).</p>
+
+  <div class="demo-section" id="demo-nosql">
+    <div class="demo-header">
+      <h3>📊 Document vs Column Store Access Patterns</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-action="query-total">Query: totals only</button>
+        <button class="demo-btn" data-action="query-all">Query: all columns</button>
+        <button class="demo-btn" data-action="reset-nosql">↩ Reset</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">Bytes-read bar shows the dramatic I/O savings of column stores for selective column queries.</div>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Using NoSQL just because it's "web scale"</h4>
+      <p>NoSQL doesn't automatically scale better than SQL. PostgreSQL handles millions of rows trivially. Choose NoSQL when you have a specific use case (flexible schema, write-heavy, extreme scale) not based on hype.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Ignoring consistency requirements for "eventual consistency"</h4>
+      <p>Eventual consistency means reads CAN return stale data. For financial transactions, inventory counts, or anything requiring correctness, eventual consistency is not acceptable without additional application-level conflict resolution.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Modeling NoSQL data like a relational schema</h4>
+      <p>Normalizing documents into separate collections and joining them in application code undoes NoSQL's benefits. Design around access patterns: embed data that's always read together. Reference (FK-style) only when data is large and rarely accessed together.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">The CAP theorem states a distributed system can guarantee at most:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="CAP says you can only have 2 of the 3 properties in the presence of network partitions."><span class="opt-letter">A</span>All 3: Consistency, Availability, Partition tolerance</div>
+        <div class="quiz-option" data-correct="true" data-explanation="CAP theorem: choose 2 of Consistency, Availability, Partition Tolerance. Since all distributed systems must tolerate partitions, the real choice is between C and A during a partition."><span class="opt-letter">B</span>2 of Consistency, Availability, Partition Tolerance</div>
+        <div class="quiz-option" data-correct="false" data-explanation="CAP specifically covers exactly these three properties."><span class="opt-letter">C</span>2 of the 4 ACID properties</div>
+        <div class="quiz-option" data-correct="false" data-explanation="All distributed systems must tolerate partitions to function."><span class="opt-letter">D</span>Consistency only — availability and partition tolerance are impossible</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">MongoDB stores data as:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Rows and columns are the relational model — MongoDB is a document store."><span class="opt-letter">A</span>Rows and columns like a relational table</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Key-value pairs describe Redis and DynamoDB, not MongoDB's document model."><span class="opt-letter">B</span>Simple key-value pairs only</div>
+        <div class="quiz-option" data-correct="true" data-explanation="MongoDB stores data as BSON (Binary JSON) documents. Documents can have nested subdocuments and arrays. Collections are groups of documents."><span class="opt-letter">C</span>BSON (Binary JSON) documents in collections</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Column families describe Cassandra/HBase (wide-column stores)."><span class="opt-letter">D</span>Column families like Cassandra</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">For time-series data with extremely high write throughput, the best NoSQL type is:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Document stores can work but aren't optimized for time-series write throughput."><span class="opt-letter">A</span>Document store (MongoDB)</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Graph databases are optimized for relationship traversal, not time-series writes."><span class="opt-letter">B</span>Graph database (Neo4j)</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Key-value stores work for simple time-series but lack the column-level query efficiency."><span class="opt-letter">C</span>Key-value store (Redis)</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Wide-column stores like Cassandra and HBase are designed for write-heavy time-series workloads — LSM-tree backed, partitioned by time, sorted within partitions. Used by Netflix, Twitter, IoT platforms."><span class="opt-letter">D</span>Wide-column store (Cassandra, HBase)</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">When would you choose NoSQL over a relational database?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Choose NoSQL when: (1) <strong>Schema flexibility</strong>: data structure varies per record (e.g., product catalog with different attributes per product type). (2) <strong>Extreme write throughput</strong>: Cassandra/HBase handle millions of writes/sec. (3) <strong>Horizontal scale-out</strong>: data too large for a single machine and JOINs aren't needed. (4) <strong>Specific access patterns</strong>: graph traversal (Neo4j), full-text search (Elasticsearch), sub-millisecond cache (Redis). (5) <strong>Operational simplicity</strong>: schema-less development in early-stage products. Stick with SQL when: ACID transactions required, complex queries with JOINs, strong data integrity, team SQL expertise.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is eventual consistency and what are its implications?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Eventual consistency means that given no new writes, all replicas will converge to the same value — eventually. In the window before convergence, different nodes may return different values for the same key. Implications: (1) Don't use for money transfers, inventory counts, or any scenario where stale reads cause business errors. (2) Design around it: use append-only event logs, CRDTs (Conflict-free Replicated Data Types), or vector clocks for conflict resolution. (3) In Cassandra: <code>CONSISTENCY QUORUM</code> (read+write quorum) gives you strong consistency at the cost of availability. <code>CONSISTENCY ONE</code> is eventual. (4) The "eventual" window can be milliseconds (same DC) or seconds (cross-region). Measure it for your workload.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How does MongoDB's document model differ from a relational schema design-wise?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Relational: normalize data — one fact in one place, JOINs to reconstruct. MongoDB: design around access patterns — embed data that's read together, reference data that's large or shared. Example: a blog post with comments. Relational: posts table + comments table, JOIN on query. MongoDB: embed comments array inside the post document (if always read together). Trade-offs of embedding: single document read (fast, atomic), but document grows unboundedly and you can't easily query comments across posts. Trade-offs of referencing: JOINs via <code>$lookup</code> (2 queries), but modular and supports independent comment queries. The right choice depends on your dominant read pattern.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Explain the BASE model and how it contrasts with ACID.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">BASE (coined for NoSQL systems): <strong>Basically Available</strong> — system is available even during partial failures. <strong>Soft state</strong> — state may change over time even without input (replicas catching up). <strong>Eventually consistent</strong> — all replicas converge given no new writes. ACID vs BASE: ACID is pessimistic (prevent inconsistency) and offers strong guarantees at the cost of availability and throughput. BASE is optimistic (tolerate inconsistency temporarily) and offers high availability and throughput at the cost of immediate consistency. Modern NewSQL databases (Spanner, CockroachDB) provide ACID + horizontal scale, blurring the boundary.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How does DynamoDB handle high availability and consistency?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">DynamoDB replicates data across 3 AZs in a region. By default it offers <strong>eventually consistent reads</strong> (might return stale data from a replica not yet synchronized) — fastest and cheapest. <strong>Strongly consistent reads</strong> route to the primary replica and always return the latest committed data — costs 2× read capacity units. DynamoDB is classified as AP in CAP (available + partition tolerant). For global tables (multi-region), it uses last-write-wins conflict resolution. Transactions: DynamoDB supports ACID transactions across multiple items via <code>TransactWriteItems</code> / <code>TransactGetItems</code> — these are serializable but limited to 25 items and single-region. Pricing is capacity-unit based — design access patterns to be efficient.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://www.mongodb.com/docs/manual/data-modeling/" target="_blank">📖 MongoDB Data Modeling</a>
+    <a class="reading-link" href="https://cassandra.apache.org/doc/latest/cassandra/data_modeling/" target="_blank">📖 Cassandra Data Modeling</a>
+    <a class="reading-link" href="https://jepsen.io/consistency" target="_blank">🔬 Consistency Models (Jepsen)</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="09-storage-engines.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Storage Engines</div></div></a>
+    <a href="11-distributed-databases.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Distributed Databases</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

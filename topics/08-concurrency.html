@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Concurrency Control — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#EC4899}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span><span>Concurrency Control</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 08</div>
+    <h1>Concurrency <span class="accent">Control</span></h1>
+    <p class="subtitle">Two-phase locking, MVCC, deadlock detection, and optimistic vs pessimistic strategies — how databases handle thousands of simultaneous transactions correctly.</p>
+    <div class="company-badges">
+      <span class="badge">PostgreSQL MVCC</span><span class="badge">InnoDB 2PL</span>
+      <span class="badge">Oracle</span><span class="badge">CockroachDB SSI</span><span class="badge">MySQL</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">🔐</div>
+      <h4>Two-Phase Locking (2PL)</h4>
+      <p>Growing phase: acquire locks, never release. Shrinking phase: release locks, never acquire. Guarantees serializability. Strict 2PL holds all locks until commit.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📸</div>
+      <h4>MVCC</h4>
+      <p>Each write creates a new row version. Readers see a consistent snapshot without locking. Readers never block writers, writers never block readers. PostgreSQL's primary concurrency strategy.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">💀</div>
+      <h4>Deadlock</h4>
+      <p>T1 waits for T2's lock. T2 waits for T1's lock. Cycle. Neither can proceed. DBMS detects via wait-for graph cycle detection, kills one transaction to break the cycle.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">⚖️</div>
+      <h4>Optimistic Concurrency</h4>
+      <p>No locking. Execute freely, validate at commit. If conflict detected, abort and retry. Efficient under low contention; expensive under high contention (wasted work).</p>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Lock Compatibility Matrix</h2>
+  <div class="table-wrap" style="margin-bottom:32px;">
+    <table class="data-table">
+      <thead><tr><th>Requester ↓ / Holder →</th><th>Shared (S)</th><th>Exclusive (X)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Shared (S) — READ</strong></td><td style="color:#10B981">✓ Compatible</td><td style="color:#EF4444">✗ Conflict</td></tr>
+        <tr><td><strong>Exclusive (X) — WRITE</strong></td><td style="color:#EF4444">✗ Conflict</td><td style="color:#EF4444">✗ Conflict</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="steps">
+    <div class="step-item"><div class="step-num">1</div><div><h4>Shared Lock (S)</h4><p>Acquired by READ operations. Multiple transactions can hold S locks simultaneously on the same row. An S lock request is blocked only if an X lock is held.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Exclusive Lock (X)</h4><p>Acquired by WRITE operations. Only one transaction can hold an X lock. Blocks all other S and X requests. In Strict 2PL, X locks are held until COMMIT.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>Deadlock Detection</h4><p>Build a wait-for graph: nodes = transactions, edges = "T1 waits for lock held by T2". Cycle = deadlock. Victim selection: kill the transaction with the fewest locks / least work done (to minimize wasted effort).</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Deadlock Prevention</h4><p>Wound-Wait: older T aborts younger T that holds a needed lock (wound). Wait-Die: older T waits; younger T dies instead of waiting. Both prevent cycles at the cost of extra aborts.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL — Locking</span></div>
+    <pre><span class="cmt">-- Explicit row lock: SELECT FOR UPDATE</span>
+<span class="kw">BEGIN</span>;
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> accounts <span class="kw">WHERE</span> id = <span class="num">42</span> <span class="kw">FOR UPDATE</span>;
+  <span class="cmt">-- Row 42 is now X-locked. Other transactions block here.</span>
+  <span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance - <span class="num">100</span> <span class="kw">WHERE</span> id = <span class="num">42</span>;
+<span class="kw">COMMIT</span>;
+
+<span class="cmt">-- Skip locked rows (non-blocking queue processing)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> jobs
+<span class="kw">WHERE</span>  status = <span class="str">'pending'</span>
+<span class="kw">LIMIT</span>  <span class="num">1</span>
+<span class="kw">FOR UPDATE SKIP LOCKED</span>;
+
+<span class="cmt">-- Advisory locks for application-level mutual exclusion</span>
+<span class="kw">SELECT</span> <span class="fn">pg_advisory_xact_lock</span>(<span class="num">12345</span>);
+<span class="cmt">-- Lock released automatically on COMMIT/ROLLBACK</span></pre>
+  </div>
+
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">Two-Phase Locking Visualizer</h2>
+  <p class="section-desc">Step through a 3-transaction, 5-resource locking scenario. Watch Shared and Exclusive locks fill the table. A deadlock cycle forms and triggers rollback.</p>
+
+  <div class="demo-section" id="demo-concurrency">
+    <div class="demo-header">
+      <h3>🔐 2PL Lock Table</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-action="run-2pl" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">▶ Run Simulation</button>
+        <button class="demo-btn" data-action="reset-2pl">↩ Reset</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">S = Shared lock, X = Exclusive lock. Red = deadlock cycle. One transaction will be rolled back.</div>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Acquiring locks in inconsistent order</h4>
+      <p>If T1 locks table A then B, and T2 locks table B then A, a deadlock is guaranteed under concurrent execution. Always acquire locks in a consistent global order (e.g., alphabetical by table name, or by PK ascending).</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Table-level locks for row-level operations</h4>
+      <p>Using LOCK TABLE when a row-level FOR UPDATE would suffice blocks the entire table. All concurrent readers and writers queue up. Row-level locking has far higher concurrency.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Not handling deadlock errors in application code</h4>
+      <p>Deadlocks are normal in concurrent applications. The DBMS will abort one transaction with a "deadlock detected" error (SQLSTATE 40P01 in PostgreSQL). Application code must catch this and retry the transaction — not crash.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">Two-phase locking (2PL) guarantees:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="2PL can still deadlock — deadlock freedom requires additional protocols like Wound-Wait."><span class="opt-letter">A</span>Complete deadlock freedom</div>
+        <div class="quiz-option" data-correct="true" data-explanation="2PL guarantees that the execution schedule of concurrent transactions is equivalent to some serial execution — serializability. The two-phase protocol (growing then shrinking) enforces this."><span class="opt-letter">B</span>Serializability of concurrent transactions</div>
+        <div class="quiz-option" data-correct="false" data-explanation="2PL can reduce throughput due to lock contention."><span class="opt-letter">C</span>Maximum possible write throughput</div>
+        <div class="quiz-option" data-correct="false" data-explanation="2PL requires rollback to handle deadlocks and certain conflicts."><span class="opt-letter">D</span>Zero transaction rollbacks</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">MVCC (Multi-Version Concurrency Control) primarily avoids:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="MVCC doesn't eliminate all deadlocks — write-write conflicts can still deadlock."><span class="opt-letter">A</span>All deadlocks in the system</div>
+        <div class="quiz-option" data-correct="true" data-explanation="MVCC stores multiple row versions so readers see a consistent snapshot without needing to wait for writers. Readers never block writers and writers never block readers."><span class="opt-letter">B</span>Reader-writer blocking (readers don't block writers and vice versa)</div>
+        <div class="quiz-option" data-correct="false" data-explanation="MVCC can use more storage than locking-only approaches due to multiple row versions."><span class="opt-letter">C</span>Extra storage usage from version history</div>
+        <div class="quiz-option" data-correct="false" data-explanation="MVCC can still have write-write conflicts requiring rollback."><span class="opt-letter">D</span>All write-write conflicts</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">A phantom read occurs when:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Reading uncommitted data is a dirty read, not a phantom read."><span class="opt-letter">A</span>A transaction reads data not yet committed by another transaction</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A non-repeatable read is when a specific row returns different values on re-read."><span class="opt-letter">B</span>A specific row returns a different value when re-read within the same transaction</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A phantom read is when a range query executed twice within the same transaction returns different SETS of rows — new rows appeared (inserted by another committed transaction) between the two executions."><span class="opt-letter">C</span>A range query returns different rows on re-execution within the same transaction</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A deadlock is a mutual waiting cycle, not a phantom read."><span class="opt-letter">D</span>Two transactions form a mutual wait cycle</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">Explain 2PL and why it guarantees serializability.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Two-Phase Locking divides a transaction's lifetime into two phases: (1) <strong>Growing phase</strong>: locks are acquired, none released. (2) <strong>Shrinking phase</strong>: locks are released, none acquired. The lock point is the moment the first lock is released. The key insight: you can serialize transactions by their lock points. Because no transaction can acquire new locks after releasing old ones, any conflicting pair of transactions has a well-defined serial order (the one whose lock point comes first "wins"). <strong>Strict 2PL</strong> (used by most databases) holds all locks until COMMIT, eliminating cascading aborts and dirty reads. The tradeoff: more contention but simpler correctness reasoning.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How does deadlock detection work and how do you prevent deadlocks in application code?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Detection: the DBMS maintains a wait-for graph. Nodes are transactions; a directed edge T1→T2 means T1 is waiting for a lock held by T2. A cycle in this graph = deadlock. The DBMS periodically runs cycle detection (DFS) and picks a victim to rollback — typically the youngest transaction or the one with fewest locks. Prevention in application code: (1) <strong>Consistent lock ordering</strong>: always lock resources in the same order (e.g., by ascending PK) — eliminates the cycle precondition. (2) <strong>Short transactions</strong>: hold locks briefly to reduce overlap windows. (3) <strong>Retry on deadlock error</strong>: catch SQLSTATE 40P01, retry with exponential backoff. (4) <strong>Avoid user input mid-transaction</strong>: never wait for external I/O while holding locks.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is the difference between optimistic and pessimistic concurrency control?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Pessimistic</strong>: assume conflicts will happen, prevent them upfront with locks. Acquire locks before accessing data; no conflict possible during execution; release on commit. Best under high contention. <strong>Optimistic</strong>: assume conflicts are rare. Execute without locks; at commit, validate that no conflict occurred (check if any read row was modified by a concurrent committed transaction). If conflict → abort and retry. Best under low contention. Implementations: <code>SELECT FOR UPDATE</code> is pessimistic; version-column optimistic locking (<code>UPDATE … WHERE version = :v</code>, fail if 0 rows updated) is optimistic. MVCC snapshot isolation is a form of optimistic concurrency — reads are free, commits validate for serialization conflicts.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is SELECT FOR UPDATE SKIP LOCKED and when would you use it?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner"><code>SELECT … FOR UPDATE SKIP LOCKED</code> acquires an exclusive lock on selected rows but skips (doesn't block on) rows already locked by other transactions. Use case: job queues. Multiple workers each do <code>SELECT * FROM jobs WHERE status='pending' LIMIT 1 FOR UPDATE SKIP LOCKED</code> — each worker gets a different job without blocking each other. Without SKIP LOCKED, all workers would queue up on the same first row, creating a thundering herd. Alternative patterns: use message queues (Redis, RabbitMQ) instead of DB tables for high-throughput job processing. DB-based queues work well up to ~1K jobs/sec.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is Serializable Snapshot Isolation (SSI)?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">SSI (used in PostgreSQL's SERIALIZABLE level and CockroachDB) provides true serializability with MVCC performance. It tracks read-write dependencies: if transaction T2 reads data that T1 has written, and T1 reads data that T2 has written (a read-write cycle), one must be aborted. SSI uses "predicate locks" (tracking which ranges were read) to detect these dangerous cycles at commit time rather than at lock acquisition time. Benefit over 2PL: readers never block; much higher read concurrency. Cost: some transactions abort at commit (false positives in cycle detection). PostgreSQL's implementation has near-zero overhead under low conflict workloads, making it the recommended default isolation level.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/explicit-locking.html" target="_blank">📖 PostgreSQL Explicit Locking</a>
+    <a class="reading-link" href="https://www.cs.cmu.edu/~natassa/courses/15-721/papers/p492-ports.pdf" target="_blank">📄 SSI Paper</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="07-query-processing.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Query Processing</div></div></a>
+    <a href="09-storage-engines.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Storage Engines</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

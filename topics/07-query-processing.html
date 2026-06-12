@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Query Processing — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#3B82F6}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span><span>Query Processing</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 07</div>
+    <h1>Query <span class="accent">Processing</span></h1>
+    <p class="subtitle">From SQL string to query execution plan — parsing, optimization, join algorithms, and how the DBMS picks the cheapest strategy using statistics.</p>
+    <div class="company-badges">
+      <span class="badge">PostgreSQL</span><span class="badge">MySQL</span><span class="badge">SQL Server</span>
+      <span class="badge">BigQuery</span><span class="badge">Presto</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">📐</div>
+      <h4>Query Optimizer</h4>
+      <p>Enumerates possible execution plans, estimates cost (I/O + CPU) using table statistics, and selects the minimum-cost plan. Cost-based optimizers use histograms and distinct value counts.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🔀</div>
+      <h4>Join Algorithms</h4>
+      <p>Nested Loop (small inner table), Hash Join (one side fits in memory), Merge Join (both sides sorted). The optimizer picks based on table sizes and available indexes.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📊</div>
+      <h4>Statistics &amp; Cardinality</h4>
+      <p>Histograms track value distribution. Cardinality estimates predict how many rows survive filters. Bad estimates → bad plans → slow queries. ANALYZE refreshes statistics.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🧊</div>
+      <h4>Materialized Views</h4>
+      <p>Precomputed query results stored on disk. Trade stale data for instant reads. Used for expensive aggregations, complex joins, and BI dashboards.</p>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Query Lifecycle</h2>
+  <div class="steps">
+    <div class="step-item"><div class="step-num">1</div><div><h4>Parse</h4><p>SQL text → parse tree. Validates syntax and checks table/column names exist. Resolves aliases. Semantic analysis checks types and permissions.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Rewrite (Rule System)</h4><p>Apply rewrite rules: expand views, apply row-level security policies, push down predicates into subqueries. PostgreSQL's rule system transforms the parse tree before planning.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>Plan (Optimize)</h4><p>Generate candidate plans using dynamic programming. For each plan node, estimate cost = (I/O cost × pages) + (CPU cost × rows). Select the minimum-cost complete plan.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Execute</h4><p>Walk the plan tree (iterator/volcano model). Each node calls <code>GetNext()</code> on its children. Rows flow upward through the tree. Sort and Aggregate nodes may buffer all input before producing output.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">PostgreSQL EXPLAIN</span></div>
+    <pre><span class="kw">EXPLAIN</span> (<span class="kw">ANALYZE</span>, <span class="kw">BUFFERS</span>, <span class="kw">FORMAT</span> TEXT)
+<span class="kw">SELECT</span> d.dept_name, <span class="fn">COUNT</span>(*), <span class="fn">AVG</span>(e.salary)
+<span class="kw">FROM</span>  employees e <span class="kw">JOIN</span> departments d <span class="kw">ON</span> e.dept_id = d.dept_id
+<span class="kw">WHERE</span> e.hire_date > <span class="str">'2020-01-01'</span>
+<span class="kw">GROUP BY</span> d.dept_name;
+
+<span class="cmt">-- Typical output:
+-- HashAggregate  (cost=245.20..247.70 rows=200 width=44)
+--   ->  Hash Join  (cost=42.00..220.00 rows=1040 width=28)
+--         Hash Cond: (e.dept_id = d.dept_id)
+--         ->  Seq Scan on employees  (cost=0.00..160.00 rows=1040)
+--               Filter: (hire_date > '2020-01-01')
+--         ->  Hash  (cost=22.00..22.00 rows=200)
+--               ->  Seq Scan on departments  (cost=0.00..22.00)</span></pre>
+  </div>
+
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">Query Execution Plan Visualizer</h2>
+  <p class="section-desc">Pick a query preset. Watch data packets flow upward through the plan tree — from table scans through joins to the final result.</p>
+
+  <div class="demo-section" id="demo-query">
+    <div class="demo-header">
+      <h3>📋 Execution Plan Tree</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-plan="simple">Simple SELECT</button>
+        <button class="demo-btn" data-plan="join">JOIN Query</button>
+        <button class="demo-btn" data-plan="agg">GROUP BY + AGG</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">Colored particles flow from leaf nodes (scans) upward through operators to Result. Cost shown on each node.</div>
+  </div>
+
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <h4>Hash Join</h4>
+      <ul>
+        <li>Build hash table from smaller relation</li>
+        <li>Probe with larger relation rows</li>
+        <li>O(n+m) time, O(min(n,m)) space</li>
+        <li>Best when one side fits in memory</li>
+        <li>Unsorted output</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Merge Join</h4>
+      <ul>
+        <li>Both inputs must be sorted on join key</li>
+        <li>Walk both sorted lists in lockstep</li>
+        <li>O(n log n + m log m) if sorting needed</li>
+        <li>Best with sorted inputs or sort already needed</li>
+        <li>Produces sorted output</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Stale statistics causing bad plans</h4>
+      <p>If ANALYZE hasn't run after a large data load, the optimizer uses outdated row count estimates. A table that grew from 100K to 10M rows without ANALYZE may get Nested Loop joins instead of Hash joins — orders of magnitude slower.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Implicit type casts defeating index usage</h4>
+      <p>WHERE user_id = '12345' when user_id is BIGINT forces a cast on every row during a sequential scan. The optimizer can't use an index because it doesn't know the cast will preserve order.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Not using EXPLAIN ANALYZE before deploying</h4>
+      <p>EXPLAIN (without ANALYZE) shows only estimated costs. EXPLAIN ANALYZE shows actual row counts and time. A query with estimated 100 rows but actual 100,000 rows has bad statistics and will have a bad plan.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">Hash join is preferred over nested loop join when:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Sorted inputs favor merge join, not hash join."><span class="opt-letter">A</span>Both tables are sorted on the join key</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Neither fitting in memory makes hash join spill to disk — less ideal."><span class="opt-letter">B</span>Neither table fits in memory</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Hash join builds a hash table from the smaller relation in memory, then probes it with the larger. O(n+m) vs O(n×m) for nested loop on large unsorted tables."><span class="opt-letter">C</span>One side fits in memory and tables are large and unsorted</div>
+        <div class="quiz-option" data-correct="false" data-explanation="An available index favors index nested loop join, not hash join."><span class="opt-letter">D</span>An index is available on the join column</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">The query optimizer uses statistics to:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Statistics inform planning; correctness is enforced by the execution engine."><span class="opt-letter">A</span>Guarantee query correctness</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Statistics (row counts, histograms, distinct values) help the optimizer estimate how many rows each operation will produce — enabling cost-based plan selection."><span class="opt-letter">B</span>Estimate cardinality and choose the lowest-cost plan</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Locks are managed by the transaction manager, not statistics."><span class="opt-letter">C</span>Lock the relevant resources before execution</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Query result caching is a separate mechanism."><span class="opt-letter">D</span>Cache query results for future identical queries</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">A materialized view differs from a regular view in that it:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Regular views are recomputed on every query; materialized views store the result."><span class="opt-letter">A</span>Is recomputed on every query</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A materialized view stores the query result on disk. Reads are instant (just scan the stored data). Trade-off: data may be stale until refreshed."><span class="opt-letter">B</span>Stores precomputed query results on disk</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Materialized views can be indexed just like regular tables."><span class="opt-letter">C</span>Cannot be indexed</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Materialized views work for any query type, not just aggregates."><span class="opt-letter">D</span>Only works with GROUP BY aggregations</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">What is the Volcano/Iterator model of query execution?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">The Volcano model (also called iterator model) implements query execution as a tree of operators, each implementing a <code>GetNext()</code> interface. The top-level operator (Result) calls GetNext() on its child, which calls GetNext() on its child, and so on. Data flows upward one tuple at a time. Benefits: memory-efficient (one tuple in flight per operator), composable, simple to implement new operators. Drawback: poor CPU cache utilization due to virtual function calls and branching. Modern databases (Snowflake, DuckDB) use vectorized execution: process batches of 1024 rows at once using SIMD, dramatically improving cache efficiency and throughput.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How does the query optimizer handle join ordering for 3+ tables?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">With n tables, there are n!/2 possible join orderings (left-deep trees). For n=4 that's 12; for n=10 that's 1.8M. The optimizer uses dynamic programming (as in System R / PostgreSQL): start with single-table costs, then for each pair, triple, etc. find the cheapest plan using the previously computed sub-plans. PostgreSQL uses this up to 8 tables, then switches to a genetic algorithm (GEQO) for larger queries. Heuristics: push filters early (reduce cardinality fast), join on equality predicates before inequality, prefer smaller-to-larger ordering.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is predicate pushdown and why is it important?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Predicate pushdown moves WHERE conditions as early as possible in the query plan — ideally into the table scan. Instead of: join 1M employees × 200 departments, then filter for dept='Engineering', the optimizer pushes the filter into the employees scan first — reducing the input to the join from 1M to ~50K rows. The join is 20× smaller. In distributed systems (Spark, BigQuery), predicate pushdown to the storage layer (e.g., Parquet column pruning) can avoid reading irrelevant files entirely — reducing I/O by orders of magnitude.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is a query plan hint and when should you use one?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Plan hints let you override the optimizer's choice: force an index (<code>USE INDEX</code> in MySQL), join order, or join type. They should be a last resort — used only when: (1) you've confirmed with EXPLAIN ANALYZE that the optimizer chose a bad plan, (2) you've refreshed statistics and it still makes the wrong choice, (3) you understand exactly why the optimizer is wrong. Hints are brittle: they survive schema changes silently (the hint may force a plan that becomes even worse after a new index is added). Prefer fixing statistics, adding/removing indexes, or rewriting the query. PostgreSQL doesn't support hints natively (use <code>pg_hint_plan</code> extension); MySQL does.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">When should you use a materialized view?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Use a materialized view when: (1) A complex query (multi-table join + aggregation) is run frequently and reads take seconds. (2) The underlying data changes infrequently enough that stale reads are acceptable. (3) You need to index the result of a query (not possible with regular views). Refresh strategies: <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> (PostgreSQL — doesn't lock reads), scheduled job, or on-demand. Trade-off: write amplification (every base table update may trigger a refresh) vs read speed. Alternatives: Redis/Memcached cache, denormalized summary tables updated by triggers, or incremental view maintenance (supported in some OLAP systems).</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/planner-optimizer.html" target="_blank">📖 PostgreSQL Planner/Optimizer</a>
+    <a class="reading-link" href="https://explain.depesz.com/" target="_blank">🔧 Explain Depesz (Plan Visualizer)</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="06-indexing.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Indexing</div></div></a>
+    <a href="08-concurrency.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Concurrency Control</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

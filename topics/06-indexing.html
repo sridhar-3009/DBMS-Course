@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indexing — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#06B6D4}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span>
+    <span>Indexing</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 06</div>
+    <h1>Database <span class="accent">Indexing</span></h1>
+    <p class="subtitle">B+trees, covering indexes, composite key ordering, index selectivity — everything you need to turn 10-second queries into 10-millisecond queries.</p>
+    <div class="company-badges">
+      <span class="badge">PostgreSQL GiST/GIN</span><span class="badge">MySQL InnoDB B+tree</span>
+      <span class="badge">Redis Sorted Set</span><span class="badge">Elasticsearch</span><span class="badge">MongoDB</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">🌲</div>
+      <h4>B+Tree Index</h4>
+      <p>Balanced tree with all data in leaf nodes. Internal nodes store keys for navigation. O(log n) search, O(log n) insert/delete. Leaf nodes linked for range scans.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🎯</div>
+      <h4>Clustered vs Non-Clustered</h4>
+      <p>Clustered: row data stored in B+tree leaf pages (InnoDB PK). One per table. Non-clustered: leaf pages store (key, PK pointer). Multiple allowed. Extra hop to data page.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🛡</div>
+      <h4>Covering Index</h4>
+      <p>Index contains all columns needed by a query — no "back to table" heap/clustered lookup needed. The index IS the query result. Massively reduces I/O.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📏</div>
+      <h4>Index Selectivity</h4>
+      <p>Ratio of distinct values to total rows. High selectivity (e.g., user_id) → index worth using. Low selectivity (e.g., boolean) → full scan may be faster.</p>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">B+Tree Mechanics</h2>
+  <div class="steps">
+    <div class="step-item"><div class="step-num">1</div><div><h4>Tree Structure</h4><p>Root node → internal nodes (navigation keys only) → leaf nodes (keys + row pointers or data). All data in leaves. Height typically 3–4 for tables of millions of rows.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Point Query (exact match)</h4><p>Start at root. At each internal node, follow the child pointer where search_key falls in the key range. Reach leaf in O(height) = O(log n) comparisons.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>Range Query</h4><p>Find the leaf containing the range start key. Then follow the linked-list of leaf nodes to the right until the range end is exceeded. I/O is proportional to result size, not table size.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Index Maintenance</h4><p>Every INSERT/UPDATE/DELETE must update all affected indexes. Indexes speed reads but slow writes. Each additional index is a tax on write throughput — only add what's needed.</p></div></div>
+    <div class="step-item"><div class="step-num">5</div><div><h4>Composite Index Key Order</h4><p>Index on (a, b, c) supports queries on (a), (a,b), (a,b,c) but NOT on (b) or (c) alone. The leftmost prefix rule: columns must be used left-to-right for the index to be usable.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL — Index Creation</span></div>
+    <pre><span class="cmt">-- Composite index: column order matters!</span>
+<span class="cmt">-- For: WHERE dept='Engineering' AND hire_date > '2020-01-01'</span>
+<span class="kw">CREATE INDEX</span> idx_emp_dept_hire <span class="kw">ON</span> employees (dept, hire_date);
+
+<span class="cmt">-- Covering index: includes salary so no heap lookup needed</span>
+<span class="cmt">-- For: SELECT salary WHERE dept='Eng' ORDER BY hire_date</span>
+<span class="kw">CREATE INDEX</span> idx_emp_covering <span class="kw">ON</span> employees (dept, hire_date) <span class="kw">INCLUDE</span> (salary);
+
+<span class="cmt">-- Partial index: only index active users (PostgreSQL)</span>
+<span class="kw">CREATE INDEX</span> idx_active_users <span class="kw">ON</span> users (email)
+  <span class="kw">WHERE</span> status = <span class="str">'active'</span>;
+
+<span class="cmt">-- Hash index: O(1) equality only, no range support</span>
+<span class="kw">CREATE INDEX</span> idx_hash_email <span class="kw">ON</span> users <span class="kw">USING HASH</span> (email);
+
+<span class="cmt">-- Verify index usage</span>
+<span class="kw">EXPLAIN</span> (<span class="kw">ANALYZE</span>, <span class="kw">BUFFERS</span>)
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> employees <span class="kw">WHERE</span> dept = <span class="str">'Engineering'</span>;</pre>
+  </div>
+
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">B+Tree Traversal</h2>
+  <p class="section-desc">Enter a search key and watch the B+tree traversal animate — root to internal node to leaf. Toggle the index off to see full table scan comparison.</p>
+
+  <div class="demo-section" id="demo-index">
+    <div class="demo-header">
+      <h3>🌲 B+Tree Index Search</h3>
+      <div class="demo-controls">
+        <input class="demo-input" type="number" data-action="index-search" value="42" min="1" max="99" style="width:80px;min-width:0;">
+        <button class="demo-btn" data-action="search-btn" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">🔍 Search</button>
+        <button class="demo-btn" data-action="range-query">Range: 10–48</button>
+        <button class="demo-btn danger" data-action="toggle-index">Disable Index</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">Purple = traversal path. Green border = leaf nodes. Linked leaves enable range scan.</div>
+  </div>
+
+  <div class="info-box">
+    <h4>Index Bloat and Maintenance</h4>
+    <p>Over time, B+trees can develop bloat from deletions (pages that are half-empty but not compacted). PostgreSQL's <code>VACUUM</code> and MySQL's <code>OPTIMIZE TABLE</code> rebuild indexes. Monitor index bloat with <code>pg_stat_user_indexes</code> and <code>pg_relation_size</code>. Unused indexes waste write performance — use <code>pg_stat_user_indexes.idx_scan = 0</code> to find them.</p>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Indexing low-selectivity columns</h4>
+      <p>An index on a boolean column (true/false) with 50/50 distribution is rarely used — the planner will choose a full scan. Partial indexes on the rare value are effective: CREATE INDEX WHERE is_deleted = true.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Functions on indexed columns in WHERE</h4>
+      <p>WHERE LOWER(email) = 'alice@…' — the index on email is NOT used. Use a function-based index: CREATE INDEX ON users (LOWER(email)). Or store the normalized value in a separate column.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Over-indexing write-heavy tables</h4>
+      <p>Each index on a table costs an extra B+tree update on every INSERT/UPDATE/DELETE. A table with 15 indexes can have 10× slower write throughput than an unindexed one. Index only what queries actually need.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Wrong column order in composite index</h4>
+      <p>Index on (status, created_at) serves queries filtering by status. Index on (created_at, status) serves range queries on created_at. Reversing these makes one query do a full scan. Lead with the equality column, follow with the range column.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">In a B+tree index, all actual data (row pointers) are stored in:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Root nodes in a B+tree only hold navigation keys."><span class="opt-letter">A</span>Root nodes</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Internal nodes hold navigation keys to route searches, not data."><span class="opt-letter">B</span>Internal nodes only</div>
+        <div class="quiz-option" data-correct="true" data-explanation="B+trees store all data in leaf nodes. Internal nodes only hold keys for navigation. Leaf nodes are linked in a doubly-linked list enabling range scans."><span class="opt-letter">C</span>Leaf nodes</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Data is not stored randomly; B+trees have a specific structure."><span class="opt-letter">D</span>Random nodes based on hash</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">A "covering index" means:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="A covering index is specific to a query's columns, not all tables."><span class="opt-letter">A</span>The index covers all tables in the database</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A covering index includes all columns needed by a query in the index itself, eliminating the need to go back to the table (heap) to fetch data. Zero extra I/O after finding the index entry."><span class="opt-letter">B</span>All query columns exist in the index — no table heap lookup needed</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Fill factor is about how much space in each page to fill on write."><span class="opt-letter">C</span>The index has 100% fill factor</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A covering index can cover non-PK columns too."><span class="opt-letter">D</span>The index only covers the primary key columns</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">For range queries (e.g., WHERE created_at BETWEEN … AND …), the best index type is:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Hash indexes only support equality lookups — O(1) for =, but useless for range queries."><span class="opt-letter">A</span>Hash index</div>
+        <div class="quiz-option" data-correct="true" data-explanation="B-tree (B+tree) indexes maintain sorted order and support range scans efficiently by traversing from the range start and following leaf-node links to the end."><span class="opt-letter">B</span>B-tree index</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Bitmap indexes are good for low-cardinality columns, not range queries."><span class="opt-letter">C</span>Bitmap index</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Full-text indexes are for text search, not numeric/date range queries."><span class="opt-letter">D</span>Full-text index</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">What is the difference between a clustered and non-clustered index?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A <strong>clustered index</strong> determines the physical order of rows on disk — the B+tree leaf pages ARE the data pages. In InnoDB (MySQL), the primary key is always the clustered index. There can be only one per table. Accessing via PK is extremely efficient — the data is right there. A <strong>non-clustered index</strong> is a separate B+tree whose leaf pages store (indexed column, PK) pairs. To fetch row data, you first look up the index (getting the PK), then do a second lookup in the clustered index. This second lookup is called a "key lookup" or "heap fetch." Covering indexes avoid this second hop.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">When should you NOT create an index?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Don't index when: (1) The table is small (< a few thousand rows) — full scans are fast and the optimizer may choose them anyway. (2) The column has very low cardinality (gender, boolean) — the optimizer won't use it for most queries. (3) The column is write-heavy and rarely queried — each index costs a write on every DML operation. (4) The column is already part of a composite index as a prefix — a separate single-column index may be redundant. (5) The column is frequently updated — index maintenance overhead is high. Always validate with EXPLAIN before and after; index decisions are empirical.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Explain composite index column ordering with an example.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Index on <code>(dept, hire_date)</code>: useful for <code>WHERE dept = 'Eng'</code> (equality on first col), <code>WHERE dept = 'Eng' AND hire_date > '2020'</code> (equality + range), and <code>ORDER BY dept, hire_date</code>. NOT useful for <code>WHERE hire_date > '2020'</code> alone — the index sorts first by dept, then by hire_date within each dept, so you can't skip to hire_date. Rule: put equality columns first, range columns last. If a query has both <code>WHERE dept = ?</code> and <code>ORDER BY hire_date</code>, put dept first. The index supports filtering AND sorting without an extra sort step.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is index selectivity and how does it affect query planning?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Index selectivity = (number of distinct values) / (total rows). Selectivity of 1.0 is perfect (every value unique, like a UUID PK). Selectivity of 0.5 means 50% of rows have the same value. The query planner uses statistics (<code>pg_statistic</code>) to estimate how many rows a condition will match. High selectivity → index lookup returns few rows → worth the index overhead. Low selectivity → index returns ~50% of rows → full scan cheaper (sequential I/O beats random I/O for large fractions). Threshold is roughly: use index if < 5–10% of rows selected; full scan otherwise. Partial indexes can create high-selectivity sub-indexes for specific values.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What are GiST and GIN indexes in PostgreSQL?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>GiST (Generalized Search Tree)</strong>: a framework for building balanced tree indexes for non-standard data types. Used for: geometric types (PostGIS point/polygon intersection), range types, full-text search (tsvector), network addresses. Supports: overlaps, contains, nearby operators. <strong>GIN (Generalized Inverted Index)</strong>: an inverted index — maps element values to the rows containing them. Used for: full-text search (best performer), JSONB containment (<code>@&gt;</code>), arrays (<code>&amp;&amp;</code>). GIN is larger and slower to build than GiST but faster to query for multi-element containment. Use GIN for text search and JSONB; GiST for geometric and range queries.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://use-the-index-luke.com/sql/anatomy" target="_blank">📖 B-Tree Anatomy (UTILU)</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/indexes.html" target="_blank">📖 PostgreSQL Index Types</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="05-transactions.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Transactions &amp; ACID</div></div></a>
+    <a href="07-query-processing.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Query Processing</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

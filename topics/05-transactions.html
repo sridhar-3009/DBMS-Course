@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transactions &amp; ACID — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#EF4444}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span>
+    <span>Transactions &amp; ACID</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 05</div>
+    <h1>Transactions &amp; <span class="accent">ACID</span></h1>
+    <p class="subtitle">How databases guarantee correctness in the face of crashes, concurrent users, and hardware failures — and what happens when each guarantee is weakened.</p>
+    <div class="company-badges">
+      <span class="badge">InnoDB (MySQL)</span><span class="badge">PostgreSQL</span>
+      <span class="badge">CockroachDB</span><span class="badge">Spanner</span><span class="badge">Oracle</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">⚛️</div>
+      <h4>Atomicity</h4>
+      <p>All-or-nothing. A transaction either commits fully or rolls back completely — no partial state ever visible. Enforced via WAL undo log.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">✅</div>
+      <h4>Consistency</h4>
+      <p>A transaction takes the DB from one valid state to another. Schema constraints, triggers, and application invariants must all hold before and after.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🏝</div>
+      <h4>Isolation</h4>
+      <p>Concurrent transactions don't interfere. The illusion: each transaction executes as if it were the only one running. Enforced via locking or MVCC.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">💾</div>
+      <h4>Durability</h4>
+      <p>Once committed, data survives crashes. WAL (Write-Ahead Log) ensures committed changes are written to durable storage before the commit returns.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Isolation Levels</div>
+  <h2 class="section-title">Anomalies vs Isolation</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Isolation Level</th><th>Dirty Read</th><th>Non-Repeatable Read</th><th>Phantom Read</th><th>Lost Update</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>READ UNCOMMITTED</td><td style="color:#EF4444">✗ possible</td><td style="color:#EF4444">✗ possible</td><td style="color:#EF4444">✗ possible</td><td style="color:#EF4444">✗ possible</td></tr>
+        <tr><td>READ COMMITTED</td><td style="color:#10B981">✓ prevented</td><td style="color:#EF4444">✗ possible</td><td style="color:#EF4444">✗ possible</td><td style="color:#EF4444">✗ possible</td></tr>
+        <tr><td>REPEATABLE READ</td><td style="color:#10B981">✓ prevented</td><td style="color:#10B981">✓ prevented</td><td style="color:#EF4444">✗ possible*</td><td style="color:#10B981">✓ prevented</td></tr>
+        <tr><td>SERIALIZABLE</td><td style="color:#10B981">✓ prevented</td><td style="color:#10B981">✓ prevented</td><td style="color:#10B981">✓ prevented</td><td style="color:#10B981">✓ prevented</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:.78rem;color:var(--text-muted);margin-top:-8px;margin-bottom:28px;">*PostgreSQL's REPEATABLE READ also prevents phantom reads via MVCC snapshot isolation.</p>
+
+  <div class="steps">
+    <div class="step-item"><div class="step-num">1</div><div><h4>Dirty Read</h4><p>T1 reads data written by T2 that hasn't committed yet. If T2 rolls back, T1 read data that never existed. Only occurs at READ UNCOMMITTED.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Non-Repeatable Read</h4><p>T1 reads a row. T2 commits an UPDATE to that row. T1 reads the same row again and gets a different value. Prevented at REPEATABLE READ+.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>Phantom Read</h4><p>T1 executes a range query. T2 INSERTs a row matching the range and commits. T1 re-runs the same query and gets different (extra) rows. Prevented at SERIALIZABLE.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Lost Update</h4><p>T1 and T2 both read balance=100, both compute balance+50, both write 150. One write overwrites the other. Net effect: only one of the two updates is reflected.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL — Transaction Control</span></div>
+    <pre><span class="cmt">-- Basic transaction</span>
+<span class="kw">BEGIN</span>;
+  <span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance - <span class="num">100</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+  <span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance + <span class="num">100</span> <span class="kw">WHERE</span> id = <span class="num">2</span>;
+<span class="kw">COMMIT</span>;
+
+<span class="cmt">-- Set isolation level for a single transaction</span>
+<span class="kw">BEGIN</span> <span class="kw">TRANSACTION ISOLATION LEVEL</span> SERIALIZABLE;
+  <span class="kw">SELECT</span> balance <span class="kw">FROM</span> accounts <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">FOR UPDATE</span>;  <span class="cmt">-- pessimistic lock</span>
+  <span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance - <span class="num">50</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+<span class="kw">COMMIT</span>;
+
+<span class="cmt">-- Savepoints for partial rollback</span>
+<span class="kw">BEGIN</span>;
+  <span class="kw">INSERT INTO</span> orders ... ;
+  <span class="kw">SAVEPOINT</span> after_order;
+  <span class="kw">INSERT INTO</span> payments ... ;
+  <span class="kw">ROLLBACK TO</span> after_order;  <span class="cmt">-- undo payment only</span>
+<span class="kw">COMMIT</span>;</pre>
+  </div>
+
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">Transaction Timeline</h2>
+  <p class="section-desc">Drag the progress slider to advance time through two concurrent transactions. Change the isolation level to see which anomalies appear or disappear.</p>
+
+  <div class="demo-section" id="demo-transaction">
+    <div class="demo-header">
+      <h3>⏱ Concurrent Transaction Simulator</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-isolation="READ_UNCOMMITTED">READ UNCOMMITTED</button>
+        <button class="demo-btn active" data-isolation="READ_COMMITTED">READ COMMITTED</button>
+        <button class="demo-btn" data-isolation="REPEATABLE_READ">REPEATABLE READ</button>
+        <button class="demo-btn" data-isolation="SERIALIZABLE">SERIALIZABLE</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">Drag the blue progress dot left/right to travel through time. Anomalies appear in red.</div>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Long-running transactions</h4>
+      <p>Transactions held open for seconds or minutes block other writers, accumulate MVCC versions (bloating the database), and increase the blast radius of failures. Keep transactions short and focused.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Doing HTTP calls inside a transaction</h4>
+      <p>If the HTTP request hangs, your transaction holds locks indefinitely. Never call external services inside BEGIN…COMMIT. Prepare data, commit, then make the call.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Using READ UNCOMMITTED outside of monitoring queries</h4>
+      <p>READ UNCOMMITTED is almost never the right choice in application code. The only legitimate use case is approximate analytics dashboards where dirty reads are acceptable.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">Which isolation level prevents dirty reads but still allows non-repeatable reads?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="READ UNCOMMITTED allows dirty reads."><span class="opt-letter">A</span>READ UNCOMMITTED</div>
+        <div class="quiz-option" data-correct="true" data-explanation="READ COMMITTED prevents dirty reads (only reads committed data) but another transaction can commit an update between two reads within your transaction — a non-repeatable read."><span class="opt-letter">B</span>READ COMMITTED</div>
+        <div class="quiz-option" data-correct="false" data-explanation="REPEATABLE READ also prevents non-repeatable reads — it's stricter than READ COMMITTED."><span class="opt-letter">C</span>REPEATABLE READ</div>
+        <div class="quiz-option" data-correct="false" data-explanation="SERIALIZABLE is the strictest level and prevents all anomalies."><span class="opt-letter">D</span>SERIALIZABLE</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">The 'I' in ACID stands for:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Integration is not an ACID property."><span class="opt-letter">A</span>Integration</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Isolation ensures concurrent transactions don't interfere with each other — each appears to run as if it were the only transaction."><span class="opt-letter">B</span>Isolation</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Indexing is a storage optimization, not an ACID property."><span class="opt-letter">C</span>Indexing</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Idempotency is a property of operations, not an ACID property."><span class="opt-letter">D</span>Idempotency</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">A transaction that aborts must:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Committing partial changes violates Atomicity — the 'A' in ACID."><span class="opt-letter">A</span>Commit any completed partial changes</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Locks must be released on abort so other transactions can proceed."><span class="opt-letter">B</span>Retain all acquired locks indefinitely</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Atomicity requires that an aborted transaction has NO visible effect. All changes must be rolled back, restoring the database to its pre-transaction state."><span class="opt-letter">C</span>Roll back all changes, leaving no visible effect</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Automatic retry is an application concern, not a DBMS guarantee. The DBMS only ensures rollback."><span class="opt-letter">D</span>Retry automatically until it succeeds</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">How does MVCC (Multi-Version Concurrency Control) work in PostgreSQL?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">PostgreSQL's MVCC stores multiple versions of each row. Every row has hidden system columns: <code>xmin</code> (transaction ID that created this version) and <code>xmax</code> (transaction ID that deleted/updated it, or 0 if still current). When you read, PostgreSQL's "snapshot" includes a list of in-progress transactions. A row version is visible to your snapshot if xmin committed before your snapshot AND (xmax is 0 or xmax hasn't committed yet). Writers create a new row version and set xmax on the old one — they never overwrite. This means readers never block writers and writers never block readers. <code>VACUUM</code> periodically reclaims dead row versions (xmax committed).</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is a dirty read, and when can it actually be useful?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A dirty read is when transaction T1 reads data written by T2 that hasn't committed yet. If T2 rolls back, T1 read data that never "officially" existed — a phantom fact. In most application code, this is never acceptable. Legitimate uses: approximate reporting dashboards (you want the freshest in-progress data for a live counter), monitoring queries where stale reads for 1–2 seconds are acceptable, and debugging (seeing exactly what an in-progress transaction is doing). In PostgreSQL, even READ UNCOMMITTED gives you READ COMMITTED behavior — the engine won't show truly dirty reads. SQL Server and MySQL support it.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is the difference between COMMIT and ROLLBACK?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">COMMIT makes all changes in the transaction permanent and visible to other transactions. The DBMS flushes WAL to durable storage before returning success (durability guarantee). Locks are released. ROLLBACK undoes all changes made in the transaction — the database state is as if the transaction never happened. The WAL undo log is applied to reverse changes. Locks are released. Implicit rollback happens on session disconnect, crash, or explicit error handling. SAVEPOINT allows partial rollback within a transaction without aborting the whole thing.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Explain the lost update problem and how SELECT FOR UPDATE solves it.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Lost update: T1 reads balance=100, T2 reads balance=100, T1 writes 150 (100+50), T2 writes 150 (100+50) — one update is lost (should be 200). <code>SELECT FOR UPDATE</code> acquires an exclusive row lock at read time. T2's SELECT FOR UPDATE blocks until T1 commits, then T2 reads the updated value 150 and writes 200 correctly. Alternatives: (1) Atomic UPDATE: <code>UPDATE … SET balance = balance + 50</code> — the DBMS serializes concurrent updates atomically. (2) Optimistic locking with version columns: read version=5, update WHERE version=5, fail if another transaction already updated. Choose based on contention level.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is a savepoint and when would you use it?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A savepoint marks a point within a transaction to which you can roll back without aborting the entire transaction. SQL: <code>SAVEPOINT name</code>, <code>ROLLBACK TO name</code>, <code>RELEASE name</code>. Use cases: (1) Bulk import with partial error tolerance: insert batch, if a row fails ROLLBACK TO savepoint, skip that row, continue. (2) Complex multi-step workflows where early steps should survive even if later steps fail. (3) Testing: wrap test code in a transaction, use savepoints to reset state between sub-tests, rollback the outer transaction at the end. Note: savepoints are not a substitute for good error handling design.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/transaction-iso.html" target="_blank">📖 PostgreSQL Isolation Levels</a>
+    <a class="reading-link" href="https://jepsen.io/analyses" target="_blank">🔬 Jepsen Distributed Systems Analysis</a>
+    <a class="reading-link" href="https://martin.kleppmann.com/2015/09/26/transactions-at-various-isolation-levels.html" target="_blank">📄 Kleppmann: Isolation Levels</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="04-normalization.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Normalization</div></div></a>
+    <a href="06-indexing.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Indexing</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

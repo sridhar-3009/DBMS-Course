@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storage Engines — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#F97316}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span><span>Storage Engines</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 09</div>
+    <h1>Storage <span class="accent">Engines</span></h1>
+    <p class="subtitle">InnoDB internals, Write-Ahead Logging, buffer pools, LSM trees — how databases actually persist data to disk and recover from failures.</p>
+    <div class="company-badges">
+      <span class="badge">InnoDB (MySQL)</span><span class="badge">PostgreSQL heap</span>
+      <span class="badge">RocksDB (LSM)</span><span class="badge">WiredTiger (MongoDB)</span><span class="badge">MyISAM</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">📄</div>
+      <h4>Pages &amp; Buffer Pool</h4>
+      <p>Data stored in fixed-size pages (typically 4KB–16KB). Buffer Pool is an in-memory page cache. Dirty pages (modified but not flushed) are written to disk on checkpoint or eviction.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📝</div>
+      <h4>Write-Ahead Log (WAL)</h4>
+      <p>Log changes BEFORE applying them to data pages. On crash, replay the log. Ensures durability: a COMMIT can return as soon as the WAL record is flushed — data pages can follow lazily.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🌊</div>
+      <h4>LSM Trees</h4>
+      <p>Log-Structured Merge Tree: writes to an in-memory memtable, periodically flushed to sorted SSTables on disk. Background compaction merges levels. Optimized for write-heavy workloads.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🔄</div>
+      <h4>Checkpoints &amp; Recovery</h4>
+      <p>Checkpoint: flush all dirty pages and record WAL position. On crash recovery, only replay WAL from last checkpoint. Reduces recovery time proportional to checkpoint frequency.</p>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">InnoDB Write Path</h2>
+  <div class="steps">
+    <div class="step-item"><div class="step-num">1</div><div><h4>Write to Redo Log (WAL)</h4><p>The change is first written to the redo log buffer (in memory), then flushed to the redo log files on disk. This is the durability guarantee — once the log is flushed, the commit can succeed even if the data page isn't on disk yet.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Modify Page in Buffer Pool</h4><p>The data page is loaded from disk into the buffer pool (if not already cached). The change is applied to the in-memory page. The page is marked "dirty" — modified but not yet written to disk.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>Undo Log Entry</h4><p>An undo record is written (for rollback support and MVCC). If the transaction aborts, the undo log provides the "before image" to restore. PostgreSQL instead writes a new version (tuple) and marks the old xmax.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Background Flush (Checkpoint)</h4><p>Dirty pages are flushed to disk in the background by the page cleaner thread. A checkpoint records the minimum LSN (Log Sequence Number) that needs to be replayed on recovery. More frequent checkpoints = faster recovery + more I/O.</p></div></div>
+    <div class="step-item"><div class="step-num">5</div><div><h4>Crash Recovery: ARIES</h4><p>Analysis phase: scan log to find dirty pages and in-progress transactions. Redo phase: replay all changes from last checkpoint (restore committed state). Undo phase: rollback uncommitted transactions using undo logs.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL — InnoDB Configuration</span></div>
+    <pre><span class="cmt">-- Buffer pool: most important InnoDB tuning parameter
+-- Set to 70-80% of available RAM on dedicated DB servers</span>
+<span class="kw">SET</span> GLOBAL innodb_buffer_pool_size = <span class="num">8</span>G;
+
+<span class="cmt">-- WAL sync mode: 1 = safest (fsync on commit)</span>
+<span class="cmt">-- 0 = fastest (no fsync, risky), 2 = flush but no fsync</span>
+<span class="kw">SET</span> GLOBAL innodb_flush_log_at_trx_commit = <span class="num">1</span>;
+
+<span class="cmt">-- PostgreSQL: WAL configuration</span>
+<span class="cmt">-- wal_level = logical enables logical replication</span>
+<span class="cmt">-- checkpoint_completion_target = 0.9 spreads checkpoint I/O</span>
+
+<span class="cmt">-- View dirty page stats (InnoDB)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> information_schema.INNODB_BUFFER_POOL_STATS\G</pre>
+  </div>
+
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">Page/Block Storage Visualizer</h2>
+  <p class="section-desc">INSERT fills free blocks, DELETE marks blocks dashed (fragmented). VACUUM compacts the table. Watch the fill factor gauge change.</p>
+
+  <div class="demo-section" id="demo-storage">
+    <div class="demo-header">
+      <h3>📦 Storage Page Layout</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-action="insert-row" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">+ INSERT Row</button>
+        <button class="demo-btn danger" data-action="delete-row">× DELETE Row</button>
+        <button class="demo-btn warn" data-action="vacuum">🧹 VACUUM</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">Blue = used page, red dashed = deleted (dead tuple), dark = free. VACUUM reclaims dead tuples.</div>
+  </div>
+
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <h4>B+Tree (InnoDB/PostgreSQL)</h4>
+      <ul>
+        <li>Reads: O(log n) — excellent</li>
+        <li>Writes: random I/O to existing pages</li>
+        <li>Good for mixed read/write workloads</li>
+        <li>VACUUM needed for dead tuple cleanup</li>
+        <li>Row-level compression possible</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>LSM Tree (RocksDB/Cassandra)</h4>
+      <ul>
+        <li>Writes: sequential append — very fast</li>
+        <li>Reads: may check multiple levels</li>
+        <li>Bloom filters reduce false reads</li>
+        <li>Compaction happens asynchronously</li>
+        <li>Best for write-heavy time-series/log data</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Setting innodb_flush_log_at_trx_commit = 0</h4>
+      <p>This disables WAL flushing on commit — MySQL uses OS buffers only. Up to 1 second of committed data can be lost on crash. Never use this for financial or critical data. Mode 2 (flush but no fsync) is a safer compromise.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Not running VACUUM (PostgreSQL)</h4>
+      <p>PostgreSQL MVCC never overwrites rows — dead tuples accumulate. Without VACUUM, tables bloat (4× is common), queries slow down, and eventually transaction ID wraparound (every ~2B transactions) causes catastrophic downtime. Autovacuum must be tuned and monitored.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Undersizing the buffer pool</h4>
+      <p>If the buffer pool is too small, hot pages are constantly evicted and re-read from disk. 70–80% of RAM on a dedicated database server is the standard starting point. Monitor <code>innodb_buffer_pool_reads</code> (disk reads) vs <code>innodb_buffer_pool_read_requests</code> (cache hits).</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">Write-Ahead Logging (WAL) ensures durability by:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="WAL is specifically about logging changes, not just making writes faster."><span class="opt-letter">A</span>Making all writes faster by buffering them</div>
+        <div class="quiz-option" data-correct="true" data-explanation="WAL requires that log records for a change are flushed to durable storage BEFORE the corresponding data pages. On crash, the log can replay all committed changes even if data pages weren't flushed."><span class="opt-letter">B</span>Writing log records to durable storage BEFORE applying changes to data pages</div>
+        <div class="quiz-option" data-correct="false" data-explanation="WAL writes are sequential to a log file, not random to data pages. The benefit is sequential vs random I/O."><span class="opt-letter">C</span>Writing all changes directly to data pages synchronously</div>
+        <div class="quiz-option" data-correct="false" data-explanation="WAL doesn't eliminate the need for checkpoints; checkpoints reduce recovery time."><span class="opt-letter">D</span>Eliminating the need for periodic checkpoints</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">In InnoDB, the clustered index means:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Clustered index is not a separate file — the row data IS the leaf page of the clustered B+tree."><span class="opt-letter">A</span>Row data is stored in a separate file from the index</div>
+        <div class="quiz-option" data-correct="true" data-explanation="In InnoDB, the primary key IS the clustered index. The B+tree leaf pages contain the actual row data. PK lookups require only one B+tree traversal."><span class="opt-letter">B</span>Row data is stored directly in the primary key B+tree leaf pages</div>
+        <div class="quiz-option" data-correct="false" data-explanation="InnoDB uses row-level locking, not page-level."><span class="opt-letter">C</span>Rows are locked at the page level, not row level</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A hash-based clustered index is not what InnoDB uses — it uses a B+tree."><span class="opt-letter">D</span>Rows are stored in a hash table sorted by primary key</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">LSM trees are optimized for:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="LSM trees can have slower reads than B-trees due to multi-level lookups."><span class="opt-letter">A</span>Read-heavy random lookup workloads</div>
+        <div class="quiz-option" data-correct="true" data-explanation="LSM trees convert random writes into sequential appends to an in-memory memtable (then sequential disk writes). This is dramatically faster than random B-tree page writes, making them ideal for write-heavy workloads."><span class="opt-letter">B</span>Write-heavy workloads where sequential write throughput matters</div>
+        <div class="quiz-option" data-correct="false" data-explanation="LSM trees write to memory first, then disk — they don't skip memory."><span class="opt-letter">C</span>Direct random access without memory buffering</div>
+        <div class="quiz-option" data-correct="false" data-explanation="LSM trees are not specifically optimized for JOINs."><span class="opt-letter">D</span>Complex multi-table JOIN operations</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">How does crash recovery work in InnoDB (ARIES algorithm)?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">InnoDB uses the ARIES (Algorithm for Recovery and Isolation Exploiting Semantics) algorithm: (1) <strong>Analysis pass</strong>: scan the WAL from the last checkpoint to determine which pages were dirty (incomplete flushes) and which transactions were in-progress at the time of crash. (2) <strong>Redo pass</strong>: replay ALL WAL records from the last checkpoint, both committed and uncommitted. This restores the database to the exact state at crash time. (3) <strong>Undo pass</strong>: using undo logs, rollback any transactions that were in-progress (uncommitted) at crash time. ARIES's key innovation: "steal + no-force" — dirty pages CAN be flushed before commit (steal), and committed transactions DON'T need pages flushed before commit (no-force) — WAL provides durability.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is VACUUM in PostgreSQL and why is it necessary?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">PostgreSQL's MVCC never overwrites or deletes rows in place — instead, UPDATE inserts a new row version and marks the old xmax as the current transaction ID. DELETE just marks xmax. These "dead tuples" remain on disk until VACUUM reclaims them. VACUUM does: (1) Reclaim dead tuple storage for reuse. (2) Update the Free Space Map (FSM) so INSERTs can find free space. (3) Update the Visibility Map (VM) — marks pages with all-visible tuples, allowing index-only scans. (4) Prevent transaction ID wraparound (TXID wraparound vacuum freezes old rows). AUTOVACUUM triggers based on <code>autovacuum_vacuum_scale_factor</code> (default 20% dead tuples). On high-write tables, tune to trigger more aggressively.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is the difference between InnoDB and MyISAM storage engines?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">InnoDB: full ACID transactions, row-level locking, MVCC, foreign keys, crash recovery via WAL, clustered primary key index. MyISAM: no transactions, table-level locking only, no FK support, no crash recovery, full-text search (pre-InnoDB 5.6). MyISAM was MySQL's default before 5.5; InnoDB has been the default since. Reasons to still use MyISAM: slightly faster full table reads on read-only tables, simpler storage (no transaction overhead). For any production workload with writes or needing transactions, always use InnoDB. MyISAM is effectively deprecated for most use cases.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How does an LSM tree work, and what is compaction?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">LSM (Log-Structured Merge) tree: writes go to an in-memory <strong>memtable</strong> (sorted skip list or red-black tree). When memtable fills, it's flushed to disk as an immutable <strong>SSTable</strong> (Sorted String Table). Over time, many SSTables accumulate. <strong>Compaction</strong> merges SSTables: sort-merge overlapping key ranges, discard outdated (overwritten/deleted) entries, produce a new sorted SSTable. Levels: L0 = recently flushed (unsorted across files), L1+ = sorted, compacted. Bloom filters on each SSTable let you skip files that definitely don't contain a key. Read amplification: may need to check multiple levels. Write amplification: data is written multiple times during compaction. Tuning: level-based vs size-tiered compaction strategies (different tradeoffs).</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is the buffer pool and how should you tune it?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">The buffer pool (InnoDB) / shared_buffers (PostgreSQL) is an in-memory cache of database pages. All reads check the cache first. All writes modify the page in cache first (WAL ensures durability). Sizing: for InnoDB, set <code>innodb_buffer_pool_size</code> to 70–80% of available RAM on a dedicated DB server. For PostgreSQL, set <code>shared_buffers</code> to ~25% of RAM (PostgreSQL also benefits from the OS page cache for the rest). Monitor hit ratio: <code>innodb_buffer_pool_read_requests / innodb_buffer_pool_reads</code>. Below 99% hit rate is a red flag for read-heavy workloads. Eviction policy: LRU with a "young" and "old" list — bulk scans don't pollute the hot cache.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://dev.mysql.com/doc/refman/8.0/en/innodb-storage-engine.html" target="_blank">📖 InnoDB Architecture</a>
+    <a class="reading-link" href="https://github.com/facebook/rocksdb/wiki/RocksDB-Overview" target="_blank">📖 RocksDB (LSM) Overview</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="08-concurrency.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Concurrency Control</div></div></a>
+    <a href="10-nosql.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">NoSQL Databases</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

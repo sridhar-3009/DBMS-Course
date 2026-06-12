@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Fundamentals — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#10B981}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span>
+    <span>SQL Fundamentals</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 03</div>
+    <h1>SQL <span class="accent">Fundamentals</span></h1>
+    <p class="subtitle">From basic SELECT to window functions, CTEs, and EXPLAIN plans — the complete SQL toolkit for developers and data engineers.</p>
+    <div class="company-badges">
+      <span class="badge">PostgreSQL</span><span class="badge">MySQL</span><span class="badge">SQLite</span>
+      <span class="badge">BigQuery</span><span class="badge">Snowflake</span><span class="badge">DuckDB</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">🔍</div>
+      <h4>SELECT Pipeline</h4>
+      <p>Logical execution order: FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT. NOT the textual order you write it.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🪟</div>
+      <h4>Window Functions</h4>
+      <p>OVER(PARTITION BY … ORDER BY …) — aggregate over a sliding window without collapsing rows. ROW_NUMBER, RANK, LAG, LEAD, SUM OVER.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📎</div>
+      <h4>CTEs (WITH clause)</h4>
+      <p>Named subqueries defined before the main query. Improve readability, enable recursion (WITH RECURSIVE for hierarchies/graphs), and can be referenced multiple times.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📊</div>
+      <h4>EXPLAIN / EXPLAIN ANALYZE</h4>
+      <p>Shows the execution plan: node types (SeqScan, IndexScan, HashJoin), estimated vs actual rows, cost estimates. Essential for performance debugging.</p>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Logical Query Execution Order</h2>
+  <div class="steps">
+    <div class="step-item"><div class="step-num">1</div><div><h4>FROM + JOIN</h4><p>Tables are resolved and joined first. This is why you can reference a JOIN alias in WHERE but not column aliases defined in SELECT — SELECT hasn't happened yet.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>WHERE</h4><p>Rows filtered by predicate. Evaluated before GROUP BY — can't filter on aggregate results here (that's HAVING). Can reference original table columns only.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>GROUP BY + aggregate functions</h4><p>Rows collapsed into groups. Every column in SELECT must either be in GROUP BY or wrapped in an aggregate (COUNT, SUM, AVG, MIN, MAX).</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>HAVING</h4><p>Filters groups based on aggregated values. <code style="font-family:monospace;background:var(--surface-3);padding:1px 5px;border-radius:4px;">HAVING COUNT(*) > 5</code> — unlike WHERE, can reference aggregate results.</p></div></div>
+    <div class="step-item"><div class="step-num">5</div><div><h4>SELECT + window functions</h4><p>Columns are projected. Window functions are evaluated here, after GROUP BY — they can see aggregate results and operate across a frame of rows without collapsing them.</p></div></div>
+    <div class="step-item"><div class="step-num">6</div><div><h4>ORDER BY + LIMIT</h4><p>Results sorted and truncated. LIMIT without ORDER BY returns arbitrary rows. OFFSET is inefficient on large datasets — use keyset pagination instead.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL — Window Functions</span></div>
+    <pre><span class="cmt">-- Running salary total per department, rank within each dept</span>
+<span class="kw">SELECT</span>
+  emp_id,
+  name,
+  dept,
+  salary,
+  <span class="fn">SUM</span>(salary)    <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> dept <span class="kw">ORDER BY</span> hire_date) <span class="kw">AS</span> running_total,
+  <span class="fn">RANK</span>()         <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> dept <span class="kw">ORDER BY</span> salary <span class="kw">DESC</span>)  <span class="kw">AS</span> salary_rank,
+  <span class="fn">LAG</span>(salary, <span class="num">1</span>) <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> dept <span class="kw">ORDER BY</span> hire_date)  <span class="kw">AS</span> prev_salary
+<span class="kw">FROM</span> employees;
+
+<span class="cmt">-- CTE + recursive example (org hierarchy)</span>
+<span class="kw">WITH RECURSIVE</span> org AS (
+  <span class="kw">SELECT</span> emp_id, name, manager_id, <span class="num">0</span> <span class="kw">AS</span> depth
+  <span class="kw">FROM</span>   employees <span class="kw">WHERE</span> manager_id <span class="kw">IS NULL</span>          <span class="cmt">-- anchor</span>
+  <span class="kw">UNION ALL</span>
+  <span class="kw">SELECT</span> e.emp_id, e.name, e.manager_id, o.depth + <span class="num">1</span>
+  <span class="kw">FROM</span>   employees e <span class="kw">JOIN</span> org o <span class="kw">ON</span> e.manager_id = o.emp_id  <span class="cmt">-- recursive</span>
+)
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> org <span class="kw">ORDER BY</span> depth, name;</pre>
+  </div>
+
+  <!-- Demo -->
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">SQL Query Visualizer</h2>
+  <p class="section-desc">Pick a preset or type a WHERE clause. Watch the table animate — matching rows glow green, non-matching fade out.</p>
+
+  <div class="demo-section" id="demo-sql">
+    <div class="demo-header">
+      <h3>⚡ Live SQL Filter</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-preset="0">WHERE dept='Engineering'</button>
+        <button class="demo-btn" data-preset="1">WHERE salary&gt;80000</button>
+        <button class="demo-btn" data-preset="2">OR clause</button>
+        <button class="demo-btn" data-preset="3">ORDER BY salary</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-input-row">
+      <input class="demo-input" type="text" placeholder="SELECT * FROM employees WHERE ...">
+      <button class="demo-btn" data-action="run-sql" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">▶ Run</button>
+    </div>
+    <div class="demo-hint">Rows animate one-by-one as the engine scans. Green = matches predicate.</div>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ SELECT * in production queries</h4>
+      <p>Fetches all columns including BLOBs and unused fields. Breaks when columns are added/removed. Always list explicit columns — the optimizer can use covering indexes only if it knows which columns you need.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ The N+1 query problem</h4>
+      <p>Fetching a list of N rows then running a query per row in application code. Replace with a single JOIN or a batch IN clause. N+1 is almost always the #1 performance issue in ORMs.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Using OFFSET for pagination on large tables</h4>
+      <p>OFFSET N scans and discards N rows every time. For page 1000 with 20 rows/page you discard 20,000 rows. Use keyset pagination: WHERE id > last_seen_id ORDER BY id LIMIT 20.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Implicit type conversions in WHERE</h4>
+      <p>WHERE user_id = '123' when user_id is INT causes a type cast on every row, disabling index usage. Match parameter types to column types exactly.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">Which SQL clause filters results AFTER GROUP BY (on aggregated values)?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="WHERE filters before GROUP BY and cannot reference aggregate results."><span class="opt-letter">A</span>WHERE</div>
+        <div class="quiz-option" data-correct="false" data-explanation="GROUP BY groups rows; it doesn't filter them."><span class="opt-letter">B</span>GROUP BY</div>
+        <div class="quiz-option" data-correct="true" data-explanation="HAVING filters grouped results. Example: HAVING COUNT(*) > 5 keeps only groups with more than 5 rows."><span class="opt-letter">C</span>HAVING</div>
+        <div class="quiz-option" data-correct="false" data-explanation="ORDER BY sorts the final result set; it doesn't filter."><span class="opt-letter">D</span>ORDER BY</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">A correlated subquery differs from a regular subquery in that it:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="true" data-explanation="A correlated subquery references a column from the outer query in its WHERE clause, forcing re-execution for each outer row. This makes it O(n) subquery executions vs one for a regular subquery."><span class="opt-letter">A</span>References a column from the outer query, re-executing per outer row</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Regular subqueries run once and cache. Correlated ones re-run each time."><span class="opt-letter">B</span>Runs once and its result is cached</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A correlated subquery is typically less efficient than a JOIN for large datasets."><span class="opt-letter">C</span>Is always faster than an equivalent JOIN</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Correlated subqueries can return multiple rows (with EXISTS) or single values."><span class="opt-letter">D</span>Cannot return multiple rows</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">EXPLAIN ANALYZE in PostgreSQL differs from EXPLAIN in that it:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="EXPLAIN shows estimated costs; EXPLAIN ANALYZE shows actual execution."><span class="opt-letter">A</span>Only shows estimated costs, not actual execution</div>
+        <div class="quiz-option" data-correct="true" data-explanation="EXPLAIN ANALYZE actually executes the query and shows actual row counts, execution times, and loop counts — vs EXPLAIN which only estimates."><span class="opt-letter">B</span>Actually executes the query and shows real vs estimated statistics</div>
+        <div class="quiz-option" data-correct="false" data-explanation="EXPLAIN ANALYZE executes the query fully; wrap in a transaction and rollback if you don't want side effects on DML."><span class="opt-letter">C</span>Runs the query but discards result rows to avoid side effects</div>
+        <div class="quiz-option" data-correct="false" data-explanation="EXPLAIN ANALYZE does not modify the query plan; it reveals what the planner chose."><span class="opt-letter">D</span>Forces the optimizer to choose a different plan</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">What is the difference between WHERE and HAVING?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">WHERE filters rows <em>before</em> they are grouped. It can reference only raw column values, not aggregate functions. HAVING filters groups <em>after</em> GROUP BY aggregation. It can reference aggregate expressions like <code>COUNT(*)</code>, <code>AVG(salary)</code>. A common mistake: <code>WHERE COUNT(*) > 5</code> — this fails because WHERE runs before aggregation. The correct form is <code>HAVING COUNT(*) > 5</code>. Performance tip: push filters into WHERE whenever possible so fewer rows are aggregated.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Explain window functions and when you'd use them instead of GROUP BY.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Window functions compute a value across a set of rows related to the current row, without collapsing them. Syntax: <code>AGG() OVER (PARTITION BY … ORDER BY … ROWS/RANGE …)</code>. Use window functions when you need both individual row data AND aggregate data in the same result — e.g., each employee's salary alongside the department average. GROUP BY collapses to one row per group; window functions keep all rows. Common functions: ROW_NUMBER (unique sequential), RANK (gaps on ties), DENSE_RANK (no gaps), LAG/LEAD (previous/next row value), SUM/AVG OVER (running totals).</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is a CTE and how does it differ from a subquery?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A CTE (Common Table Expression) is a named temporary result set defined with <code>WITH name AS (…)</code> before the main query. Key differences from subqueries: (1) CTEs can be referenced multiple times in the same query without re-execution (in most DBMS). (2) CTEs support recursion (<code>WITH RECURSIVE</code>) for hierarchical data — impossible with regular subqueries. (3) CTEs improve readability for complex queries. (4) In PostgreSQL, CTEs are optimization fences (can't be pushed into or merged with outer query) — this can hurt performance. Use <code>WITH … AS MATERIALIZED/NOT MATERIALIZED</code> to control this in PG 12+.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How do you solve the N+1 query problem?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">N+1 occurs when you fetch N rows and then execute one query per row to fetch related data (1 + N queries total). Solutions: (1) <strong>JOIN</strong>: fetch parent and children in one query. (2) <strong>IN clause</strong>: fetch all parents, collect their IDs, do one <code>WHERE parent_id IN (…)</code> query for children. (3) <strong>Eager loading</strong> in ORMs (e.g., <code>includes</code> in ActiveRecord, <code>joinedload</code> in SQLAlchemy). (4) For very large ID lists, a JOIN is usually faster than a big IN. Always verify with EXPLAIN ANALYZE.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is keyset pagination and why is it better than OFFSET?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">OFFSET n skips n rows, which requires scanning and discarding them. On page 1000 of 20 rows/page you throw away 20,000 rows — O(n) cost that grows with page number. Keyset pagination (also called cursor pagination) uses the last-seen value of the sort key: <code>WHERE id > :last_id ORDER BY id LIMIT 20</code>. The index can seek directly to <code>last_id</code> — O(log n) cost regardless of page depth. Limitation: you can't jump to an arbitrary page number. For most feeds and lists this is fine; for UIs that need "go to page X" consider hybrid approaches.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://use-the-index-luke.com/sql/explain-plan" target="_blank">📖 Reading EXPLAIN Plans</a>
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/functions-window.html" target="_blank">📖 PostgreSQL Window Functions</a>
+    <a class="reading-link" href="https://modern-sql.com/" target="_blank">📖 Modern SQL</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="02-relational-model.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Relational Model</div></div></a>
+    <a href="04-normalization.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Normalization</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

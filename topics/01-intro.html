@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Introduction to DBMS — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#0EA5E9}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links">
+      <a href="../index.html#topics">All Topics</a>
+    </div>
+    <div class="navbar-actions">
+      <button class="btn-icon" id="theme-toggle">☀️</button>
+    </div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span>
+    <span>Introduction to DBMS</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 01</div>
+    <h1>Introduction to <span class="accent">DBMS</span></h1>
+    <p class="subtitle">Why file systems fail at scale — and how a Database Management System solves data independence, integrity, concurrency, and recovery.</p>
+    <div class="company-badges">
+      <span class="badge">MySQL</span><span class="badge">PostgreSQL</span><span class="badge">SQLite</span>
+      <span class="badge">Oracle DB</span><span class="badge">MariaDB</span><span class="badge">IBM Db2</span>
+    </div>
+  </div>
+
+  <!-- Concepts -->
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">🗂</div>
+      <h4>Data Independence</h4>
+      <p>Physical independence: change storage without touching app logic. Logical independence: restructure schema without rewriting queries.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🔒</div>
+      <h4>ACID Properties</h4>
+      <p>Atomicity, Consistency, Isolation, Durability — the four guarantees that make transactions reliable in multi-user environments.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🏗</div>
+      <h4>Three-Schema Architecture</h4>
+      <p>External (views), Conceptual (logical schema), Internal (physical storage) — three levels of abstraction that isolate users from hardware.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">👥</div>
+      <h4>Concurrency Control</h4>
+      <p>Multiple users reading and writing simultaneously without corrupting data. The DBMS serializes conflicting operations transparently.</p>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">DBMS Architecture</h2>
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Query Parser</h4>
+        <p>The SQL string is tokenized, syntax-checked, and parsed into a parse tree. Semantic checks validate table names, column types, and user permissions.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Query Optimizer</h4>
+        <p>The optimizer generates multiple execution plans, estimates costs using statistics (row counts, data distribution), and selects the cheapest plan.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Execution Engine</h4>
+        <p>The physical plan is executed. The engine calls Storage Manager to fetch pages from the Buffer Pool (RAM cache backed by disk I/O).</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div>
+        <h4>Transaction Manager</h4>
+        <p>Wraps each query in a transaction context. Acquires locks, writes WAL (Write-Ahead Log) before dirty pages, releases locks on commit/rollback.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">5</div>
+      <div>
+        <h4>Recovery Manager</h4>
+        <p>On crash, replays WAL from the last checkpoint (redo phase), then undoes any uncommitted transactions (undo phase) to restore a consistent state.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code -->
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL</span></div>
+    <pre><span class="cmt">-- Simple DBMS anatomy: one statement, many internal steps</span>
+<span class="kw">SELECT</span> e.name, d.dept_name
+<span class="kw">FROM</span>   employees e
+<span class="kw">JOIN</span>   departments d <span class="kw">ON</span> e.dept_id = d.dept_id
+<span class="kw">WHERE</span>  e.salary > <span class="num">80000</span>
+<span class="kw">ORDER</span> <span class="kw">BY</span> e.name;
+
+<span class="cmt">-- Internally:
+-- 1. Parse → AST
+-- 2. Optimize → choose SeqScan vs IndexScan, pick join algorithm
+-- 3. Execute → fetch pages from buffer pool
+-- 4. Lock rows (shared lock on READ in REPEATABLE READ+)
+-- 5. Return result set</span></pre>
+  </div>
+
+  <!-- Demo -->
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">ER Diagram Explorer</h2>
+  <p class="section-desc">Click any entity to highlight its relationships and attributes. The ER diagram models a university registration system.</p>
+
+  <div class="demo-section" id="demo-intro">
+    <div class="demo-header">
+      <h3>🗺 Entity-Relationship Diagram</h3>
+      <div class="demo-controls">
+        <span style="font-size:.78rem;color:var(--text-muted)">Click entity to explore</span>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">Click STUDENT, COURSE, or ENROLLMENT to highlight connected elements</div>
+  </div>
+
+  <!-- Anti-patterns -->
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Using flat files instead of a DBMS</h4>
+      <p>CSV files have no atomicity, no query language, no concurrent access control, and no recovery. Fine for scripts; catastrophic for production data.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Ignoring normalization from day one</h4>
+      <p>Denormalized schemas feel easy initially but create update anomalies, data redundancy, and painful migrations as the application grows.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Treating the DBMS as a dumb storage layer</h4>
+      <p>Not using constraints (FK, NOT NULL, CHECK) shifts validation to application code — the worst of both worlds and much harder to enforce consistently.</p>
+    </div>
+  </div>
+
+  <!-- Quiz -->
+  <div class="section-label">Quiz</div>
+  <h2 class="section-title">Check Your Understanding</h2>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">What is the primary advantage of a DBMS over a file system?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="File systems can be faster for simple sequential reads."><span class="opt-letter">A</span>Faster file I/O in all cases</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A DBMS provides data independence, integrity constraints, concurrent access, and crash recovery — none of which file systems offer."><span class="opt-letter">B</span>Data independence, integrity, concurrency, and recovery</div>
+        <div class="quiz-option" data-correct="false" data-explanation="DBMS adds significant complexity compared to flat files."><span class="opt-letter">C</span>Simpler code for all use cases</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Not all DBMS support transactions; that's a feature, not a universal fact."><span class="opt-letter">D</span>Built-in transactions in all storage solutions</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">Which DBMS component generates multiple execution strategies and picks the cheapest?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Buffer Manager handles page caching, not plan selection."><span class="opt-letter">A</span>Buffer Manager</div>
+        <div class="quiz-option" data-correct="true" data-explanation="The Query Optimizer generates candidate plans, estimates costs using statistics, and picks the minimum-cost plan."><span class="opt-letter">B</span>Query Optimizer</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Transaction Manager handles locking and WAL, not plan optimization."><span class="opt-letter">C</span>Transaction Manager</div>
+        <div class="quiz-option" data-correct="false" data-explanation="The Recovery Manager handles crash recovery using the WAL."><span class="opt-letter">D</span>Recovery Manager</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">In the three-schema architecture, the "conceptual schema" represents:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Physical storage details are the internal schema."><span class="opt-letter">A</span>The physical storage layout on disk</div>
+        <div class="quiz-option" data-correct="true" data-explanation="The conceptual (logical) schema describes tables, relationships, constraints — independent of storage details or user views."><span class="opt-letter">B</span>The logical structure of all data — tables, relationships, constraints</div>
+        <div class="quiz-option" data-correct="false" data-explanation="User-specific views are the external schema."><span class="opt-letter">C</span>User-specific views and permissions</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Query execution plans are produced by the optimizer at runtime."><span class="opt-letter">D</span>The query execution plan at runtime</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <!-- Q&A -->
+  <div class="section-label">Interview Q&A</div>
+  <h2 class="section-title">Common Interview Questions</h2>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">What is the difference between a DBMS and a file system?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A file system provides raw byte storage organized in files and directories — no query language, no constraints, no transactions, no concurrent access control. A DBMS adds: a data model (relational, document, etc.), a declarative query language (SQL), integrity constraints (FK, NOT NULL), ACID transactions, concurrent multi-user access with locking/MVCC, and crash recovery via Write-Ahead Logging. Use a file system for blobs and configuration; use a DBMS for structured, transactional data.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Explain the three-schema architecture.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">The three-schema architecture separates concerns into three levels: (1) <strong>External schema</strong> — user views, each showing a subset of the data tailored to a role (e.g., HR sees salaries, developers see user IDs). (2) <strong>Conceptual schema</strong> — the global logical description of all tables, relationships, and constraints, independent of storage. (3) <strong>Internal schema</strong> — the physical storage details: file organization, index structures, page sizes, compression. The mappings between levels enable independence: you can change disk layout without altering the logical schema, and vice versa.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What are the four ACID properties? Give a real-world example of each.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Atomicity:</strong> A bank transfer deducts $100 from Account A and credits Account B — if the credit fails, the debit is rolled back. No partial state. <strong>Consistency:</strong> A foreign key constraint ensures you can never have an order referencing a non-existent customer. The DB moves from one valid state to another. <strong>Isolation:</strong> Two users booking the last seat on a flight don't both succeed — the second sees the updated, post-first-booking state. <strong>Durability:</strong> After a COMMIT returns, the transaction survives a power failure. The WAL ensures committed data is flushed to durable storage.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is data independence and why does it matter?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Data independence means application code doesn't need to change when the storage or schema changes. <strong>Physical independence:</strong> you can switch from a heap file to a clustered B+tree index without modifying any SQL. The optimizer adapts. <strong>Logical independence:</strong> you can add a column or split a table into two (and provide a view) without breaking existing queries. This matters because storage decisions and schema evolution happen frequently; coupling them to application code creates a maintenance nightmare.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is the role of a DBA in a production system?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">A Database Administrator (DBA) is responsible for: schema design and evolution (DDL migrations), performance tuning (index selection, query optimization, buffer pool sizing), backup and recovery planning (RPO/RTO targets, WAL archiving, PITR), security (user roles, column-level encryption, audit logging), capacity planning (storage growth, replication lag), and high-availability setup (primary/replica, failover). In cloud-native environments the DBA role increasingly overlaps with SRE and data engineering.</div></div>
+    </div>
+  </div>
+
+  <!-- Further Reading -->
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://www.postgresql.org/docs/current/tutorial.html" target="_blank">📖 PostgreSQL Official Tutorial</a>
+    <a class="reading-link" href="https://use-the-index-luke.com/" target="_blank">📖 Use The Index, Luke</a>
+    <a class="reading-link" href="https://db.cs.cmu.edu/courses/" target="_blank">🎓 CMU Database Courses</a>
+  </div>
+
+  <!-- Nav -->
+  <div class="topic-nav">
+    <div></div>
+    <a href="02-relational-model.html" class="topic-nav-link next">
+      <div class="topic-nav-arrow">→</div>
+      <div><div class="topic-nav-label">Next Topic</div><div class="topic-nav-title">Relational Model</div></div>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-bottom" style="max-width:1100px;margin:0 auto;padding:16px 24px;font-size:.78rem;color:var(--text-muted);">
+    <a href="../index.html">← Back to Course</a>
+    <span>DBMS Illustrated — Open Source</span>
+  </div>
+</footer>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

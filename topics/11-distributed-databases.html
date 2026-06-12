@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distributed Databases — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#A855F7}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span><span>Distributed Databases</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 11</div>
+    <h1>Distributed <span class="accent">Databases</span></h1>
+    <p class="subtitle">Raft consensus, two-phase commit, consistent hashing, and sharding strategies — how Google Spanner and CockroachDB provide ACID at global scale.</p>
+    <div class="company-badges">
+      <span class="badge">Spanner (Google)</span><span class="badge">CockroachDB</span><span class="badge">YugabyteDB</span>
+      <span class="badge">Vitess</span><span class="badge">TiDB</span>
+    </div>
+  </div>
+
+  <div class="section-label">Core Concepts</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">🗳</div>
+      <h4>Raft Consensus</h4>
+      <p>Leader-based consensus for replicated logs. Leader handles all writes, replicates to followers. Majority quorum required for commit. Automatic leader election on failure.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">✂️</div>
+      <h4>Sharding</h4>
+      <p>Partition data across multiple nodes by a shard key. Range sharding (ordered keys) vs Hash sharding (uniform distribution). Each shard independently handles its key range.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">🔁</div>
+      <h4>Replication</h4>
+      <p>Synchronous: wait for N replicas to confirm before commit (strong consistency, higher latency). Asynchronous: commit immediately, replicate in background (low latency, risk of data loss on primary failure).</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">⚖️</div>
+      <h4>Two-Phase Commit (2PC)</h4>
+      <p>Coordinator asks all participants to PREPARE. If all say YES, coordinator sends COMMIT to all. Used for distributed transactions spanning multiple shards. Blocking on coordinator failure.</p>
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Raft Leader Election</h2>
+  <div class="steps">
+    <div class="step-item"><div class="step-num">1</div><div><h4>Heartbeats</h4><p>The Leader sends periodic heartbeat AppendEntries RPCs to all followers to prevent election timeouts. Followers reset their election timer on each heartbeat received.</p></div></div>
+    <div class="step-item"><div class="step-num">2</div><div><h4>Election Timeout</h4><p>If a follower doesn't receive a heartbeat within a random timeout (150–300ms), it assumes the leader is dead. It increments its term, transitions to Candidate, votes for itself.</p></div></div>
+    <div class="step-item"><div class="step-num">3</div><div><h4>RequestVote</h4><p>The Candidate sends RequestVote RPCs to all other nodes. A node grants its vote if: it hasn't voted in this term, and the candidate's log is at least as up-to-date as its own.</p></div></div>
+    <div class="step-item"><div class="step-num">4</div><div><h4>Majority Quorum</h4><p>If the Candidate receives votes from a majority (⌊n/2⌋ + 1 of n nodes), it becomes the new Leader. For 3 nodes: need 2 votes. For 5 nodes: need 3 votes.</p></div></div>
+    <div class="step-item"><div class="step-num">5</div><div><h4>Log Replication</h4><p>New Leader sends AppendEntries with the pending log entry. Once a majority acknowledges, the entry is committed. Leader notifies followers of the commit in the next heartbeat.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">Distributed — Consistent Hashing</span></div>
+    <pre><span class="cmt">-- Hash ring with virtual nodes (vnodes)
+-- Each physical node owns multiple points on the ring
+-- Redistribution on node add/remove: only k/n keys move (vs k on naive hash)</span>
+
+<span class="cmt">-- Example: CockroachDB range-based sharding</span>
+<span class="cmt">-- Automatically splits ranges when they exceed 512MB</span>
+<span class="cmt">-- Each range = Raft group with 3-5 replicas</span>
+
+<span class="cmt">-- Manual sharding: Vitess (MySQL) example</span>
+<span class="kw">CREATE</span> VSCHEMA SHARDED;
+<span class="kw">ALTER</span> VSCHEMA ON customers ADD VINDEX hash (customer_id) <span class="kw">USING</span> hash;
+<span class="cmt">-- customer_id hashed to determine shard
+-- Cross-shard queries: scatter-gather (slower) or avoid by co-locating data</span>
+
+<span class="cmt">-- Distributed transactions: 2PC in pseudocode
+-- Phase 1: Coordinator → all shards: "PREPARE txn_id"
+-- Phase 2: if all YES → "COMMIT txn_id", else "ABORT txn_id"</span></pre>
+  </div>
+
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">Raft Consensus Simulator</h2>
+  <p class="section-desc">Send a write to the leader and watch log replication to followers. Kill the leader to trigger an election — watch the election timer and new leader emerge.</p>
+
+  <div class="demo-section" id="demo-distributed">
+    <div class="demo-header">
+      <h3>🗳 Raft Consensus (3-node cluster)</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-action="raft-write" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">✏ Send Write</button>
+        <button class="demo-btn danger" data-action="kill-leader">💀 Kill Leader</button>
+        <button class="demo-btn" data-action="reset-raft">↩ Reset</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap"></div>
+    <div class="demo-hint">Crown = leader. Green packets = AppendEntries. Election timer animates on leader death. Log entries show at bottom of each node.</div>
+  </div>
+
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <h4>Range Sharding</h4>
+      <ul>
+        <li>Keys sorted — great for range queries</li>
+        <li>Risk: hot spot on sequential keys (auto-increment PKs)</li>
+        <li>CockroachDB, TiDB, HBase</li>
+        <li>Easy range scans within a shard</li>
+        <li>Uneven load if key distribution is skewed</li>
+      </ul>
+    </div>
+    <div class="comparison-card">
+      <h4>Hash Sharding</h4>
+      <ul>
+        <li>Uniform distribution across shards</li>
+        <li>Range queries require scatter-gather</li>
+        <li>Cassandra (consistent hashing), Vitess</li>
+        <li>No hot spots on sequential inserts</li>
+        <li>Resharding requires remapping keys</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Using auto-increment PKs as shard keys</h4>
+      <p>Sequential keys → all writes go to the last range shard → hot spot. One node gets 100% of write traffic. Use random UUIDs (UUID v4) or time-bucketed keys (ULID/KSUID) for uniform distribution.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Cross-shard transactions for every operation</h4>
+      <p>2PC is expensive: 2 round trips, blocking on coordinator failure. Design your shard key so that related data lives on the same shard (tenant_id, user_id) — keep transactions local where possible.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Under-sized Raft groups</h4>
+      <p>A 2-node cluster has no fault tolerance — one node failure loses quorum. Always use odd numbers: 3 (tolerate 1 failure), 5 (tolerate 2). More than 7 nodes in a Raft group hurts write latency due to larger quorum.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">In Raft, a new leader is elected when:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="In Raft, any follower can trigger an election — not just ones that request it."><span class="opt-letter">A</span>Any node explicitly requests a leadership change</div>
+        <div class="quiz-option" data-correct="true" data-explanation="A follower starts an election when its election timeout expires without receiving a heartbeat from the current leader, indicating the leader may be dead."><span class="opt-letter">B</span>A follower's election timeout expires without receiving a heartbeat</div>
+        <div class="quiz-option" data-correct="false" data-explanation="A simple majority vote is required, but it's triggered by an election timeout, not just any agreement."><span class="opt-letter">C</span>50%+1 nodes simultaneously agree to elect a new leader</div>
+        <div class="quiz-option" data-correct="false" data-explanation="In Raft, any follower can start an election — there's no designated master."><span class="opt-letter">D</span>The designated master fails over to a standby master</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">Two-Phase Commit (2PC) can block indefinitely when:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Fast networks reduce 2PC latency but don't prevent blocking."><span class="opt-letter">A</span>The network is fast and all nodes are healthy</div>
+        <div class="quiz-option" data-correct="true" data-explanation="If the coordinator fails AFTER sending PREPARE but BEFORE sending COMMIT/ABORT, participants are stuck in PREPARED state — they hold locks and can't proceed. This is the fundamental 2PC blocking problem."><span class="opt-letter">B</span>The coordinator fails after PREPARE but before sending COMMIT/ABORT</div>
+        <div class="quiz-option" data-correct="false" data-explanation="All nodes responding is the happy path — no blocking."><span class="opt-letter">C</span>All participant nodes respond promptly to PREPARE</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Having no locks would make blocking less severe, not more."><span class="opt-letter">D</span>No locks are held by any participant</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">Consistent hashing reduces resharding cost because:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Consistent hashing doesn't require rehashing all keys — that's the whole point."><span class="opt-letter">A</span>All keys are rehashed when the node count changes</div>
+        <div class="quiz-option" data-correct="true" data-explanation="With consistent hashing, adding/removing a node only affects k/n keys (where k=total keys, n=nodes) — only the keys assigned to the adjacent slots on the ring move. Naive modulo hashing remaps k*(n-1)/n keys."><span class="opt-letter">B</span>Only k/n keys need remapping when adding or removing a node</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Consistent hashing works for any number of nodes."><span class="opt-letter">C</span>The system is limited to exactly 3 nodes for optimal performance</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Consistent hashing uses hash functions, not B-trees."><span class="opt-letter">D</span>Data is stored in B-trees internally, avoiding rehashing</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">How does the Raft consensus algorithm ensure linearizability?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Raft ensures linearizability (the strongest single-object consistency model) through: (1) <strong>Leader completeness</strong>: a leader always has all committed log entries. Votes are only granted to candidates whose log is at least as up-to-date. (2) <strong>Majority commit</strong>: an entry is committed only after being replicated to a majority of nodes — even if the leader crashes, at least one node in any future majority quorum has the entry. (3) <strong>State machine safety</strong>: all nodes apply log entries in order. (4) <strong>Read linearizability</strong>: the leader must confirm its leadership before serving reads (via a "read index" or heartbeat round-trip) — otherwise a partitioned stale leader could serve stale reads. CockroachDB uses leader leases to serve reads without a round trip.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is the difference between synchronous and asynchronous replication?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Synchronous</strong>: before ACKing a write, wait for at least one (or more) replicas to confirm they've written the data. Zero RPO (Recovery Point Objective) — no committed data lost on primary failure. Tradeoff: write latency includes replica round-trip. Used by Raft (majority quorum), PostgreSQL synchronous_standby_names. <strong>Asynchronous</strong>: ACK the write immediately after writing to primary only. Replicas catch up in the background. Lower write latency but RPO > 0 — failover to an async replica may lose recently committed transactions. MySQL binlog replication is async by default. PostgreSQL streaming replication is async by default. Rule of thumb: use synchronous for primary data, async for read replicas where slight staleness is acceptable.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Explain database sharding and how you choose a shard key.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Sharding splits a table horizontally across multiple database instances. Each shard holds a subset of rows based on the shard key. Shard key selection criteria: (1) <strong>High cardinality</strong>: enough distinct values to distribute evenly. (2) <strong>Low update frequency</strong>: changing shard key requires moving the row. (3) <strong>Query alignment</strong>: most queries filter on the shard key — avoiding cross-shard scatter-gather. (4) <strong>No hot spots</strong>: avoid monotonically increasing values (auto-increment IDs) — use UUID v4, hash(user_id), or time-bucketed IDs. Good shard keys: user_id (for user-centric apps), tenant_id (for SaaS), geographic region. Bad: created_at alone (all writes go to latest shard), status (low cardinality).</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How does Google Spanner achieve global ACID transactions?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Spanner combines several innovations: (1) <strong>TrueTime API</strong>: GPS + atomic clocks in every data center. TrueTime returns a time interval [earliest, latest] with bounded uncertainty (~7ms). Commit timestamps are chosen to be after the TrueTime interval's latest bound — ensuring external consistency (if Txn2 starts after Txn1 commits, Txn2's commit timestamp > Txn1's). (2) <strong>Paxos groups</strong>: each data shard is a Paxos group (similar to Raft) for strong consistency. (3) <strong>2PC + Paxos</strong>: distributed transactions use 2PC for cross-shard atomicity, with each shard's state replicated via Paxos. (4) <strong>MVCC</strong>: Spanner uses multi-version storage and TrueTime for consistent snapshots across all shards globally. RPO=0, RTO~seconds for regional failures.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is Vitess and when would you use it?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Vitess is a horizontal sharding system for MySQL — originally built at YouTube, now used by GitHub, Slack, and others. It sits in front of MySQL instances and handles: query routing (rewrite SQL to target the correct shard), connection pooling (reduces MySQL connection overhead from thousands to hundreds), online schema changes (pt-osc style without blocking), cross-shard queries (scatter-gather), resharding with minimal downtime, and failover. Use Vitess when: your MySQL database is growing beyond what a single instance can handle (writes > ~5K/sec, storage > a few TB), you want to stay on MySQL (operational familiarity), and you need horizontal write scalability. If you're greenfield and need global scale, consider CockroachDB or YugabyteDB instead.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://raft.github.io/" target="_blank">📖 The Raft Consensus Algorithm</a>
+    <a class="reading-link" href="https://cloud.google.com/spanner/docs/true-time-external-consistency" target="_blank">📖 Spanner TrueTime</a>
+    <a class="reading-link" href="https://planetscale.com/docs/concepts/vitess-primer" target="_blank">📖 Vitess Primer</a>
+  </div>
+
+  <div class="topic-nav">
+    <a href="10-nosql.html" class="topic-nav-link"><div class="topic-nav-arrow">←</div><div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">NoSQL Databases</div></div></a>
+    <a href="12-interview-guide.html" class="topic-nav-link next"><div class="topic-nav-arrow">→</div><div><div class="topic-nav-label">Next</div><div class="topic-nav-title">Interview Guide</div></div></a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+</body>
+</html>

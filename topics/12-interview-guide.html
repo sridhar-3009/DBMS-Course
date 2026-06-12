@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interview Guide — DBMS Illustrated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>:root{--topic-color:#14B8A6}</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="../index.html"><span class="brand-icon">🗄</span>DBMS Illustrated</a>
+    <div class="navbar-links"><a href="../index.html#topics">All Topics</a></div>
+    <div class="navbar-actions"><button class="btn-icon" id="theme-toggle">☀️</button></div>
+  </div>
+</nav>
+<div class="topic-progress"><div class="topic-progress-fill" id="scroll-progress"></div></div>
+
+<div class="container">
+  <div class="breadcrumb">
+    <a href="../index.html">Home</a><span class="breadcrumb-sep">›</span>
+    <a href="../index.html#topics">Course</a><span class="breadcrumb-sep">›</span><span>Interview Guide</span>
+  </div>
+
+  <div class="topic-header">
+    <div class="topic-badge">Topic 12</div>
+    <h1>DBMS <span class="accent">Interview Guide</span></h1>
+    <p class="subtitle">Schema design patterns, system design Q&A, common gotchas, and a drag-and-drop schema builder to practice design questions before your interview.</p>
+    <div class="company-badges">
+      <span class="badge">Google</span><span class="badge">Meta</span><span class="badge">Amazon</span>
+      <span class="badge">Microsoft</span><span class="badge">Stripe</span><span class="badge">Airbnb</span>
+    </div>
+  </div>
+
+  <div class="section-label">Interview Playbook</div>
+  <div class="mini-cards">
+    <div class="mini-card">
+      <div class="mini-card-icon">❓</div>
+      <h4>Clarify First</h4>
+      <p>Before designing: ask read/write ratio, scale (QPS, data volume), consistency requirements, latency SLA, and whether schema is fixed or flexible. Design decisions follow from answers.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📐</div>
+      <h4>Start Normalized</h4>
+      <p>Begin with 3NF — show the clean relational model. Then discuss denormalization trade-offs based on stated access patterns. Never start with a denormalized schema.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">📈</div>
+      <h4>Scale Discussion</h4>
+      <p>Indexing strategy first. Then read replicas. Then sharding (which key, range vs hash). Then caching layer (Redis). Show the scaling progression, not just the final state.</p>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-icon">⚠️</div>
+      <h4>Name the Trade-offs</h4>
+      <p>Every design choice has a cost. Denormalization → update anomalies. Eventual consistency → stale reads. More indexes → write amplification. Examiners want to hear the trade-offs explicitly.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Classic Design Patterns</div>
+  <h2 class="section-title">How It Works</h2>
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>URL Shortener Schema</h4>
+        <p>Core table: <code>links(id BIGINT PK, short_code VARCHAR(8) UNIQUE INDEX, original_url TEXT, user_id FK, created_at, click_count)</code>. Bottleneck: read-heavy (300:1 read/write). Add Redis cache on short_code → original_url. Shard by hash(short_code). Click counting: batch writes to avoid hot-row contention.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Social Media Feed Schema</h4>
+        <p>Posts table + Follows table. Fan-out options: pull model (query all followed users' posts on load — slow), push model (write to each follower's feed on post — expensive for celebrities). Hybrid: push for normal users, pull for influencers. Denormalize post author data into feed for single-query reads.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>E-commerce Inventory Schema</h4>
+        <p>products(id, name, price) + inventory(product_id, warehouse_id, quantity). Inventory decrements need <code>FOR UPDATE</code> + optimistic locking to prevent overselling. Separate reservations table for cart items. Eventual decrement after payment confirmation.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div>
+        <h4>Chat Application Schema</h4>
+        <p>conversations(id, created_at) + messages(id, conv_id FK, sender_id FK, content, sent_at INDEX). Shard by conversation_id — all messages in a conversation stay together. Use timeseries optimization: partition messages table by month. For ordering guarantees, sent_at + UUID as composite sort key (clock skew resistant).</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">5</div>
+      <div>
+        <h4>Ride-sharing Schema</h4>
+        <p>drivers(id, status, location), rides(id, driver_id, rider_id, status, pickup, dropoff, price). Geospatial index (PostGIS, H3 hexagons) for nearby driver queries. Hot spot on status='available' filter — partial index. Real-time location: separate Redis geo hash, not in the RDBMS.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-lang">SQL — Interview-Ready Patterns</span></div>
+    <pre><span class="cmt">-- Pattern: Optimistic locking with version column</span>
+<span class="kw">UPDATE</span> inventory
+<span class="kw">SET</span>    quantity = quantity - <span class="num">1</span>,
+       version  = version  + <span class="num">1</span>
+<span class="kw">WHERE</span>  product_id = <span class="num">42</span>
+  <span class="kw">AND</span>  version    = :expected_version  <span class="cmt">-- fails if concurrent update happened</span>
+  <span class="kw">AND</span>  quantity   > <span class="num">0</span>;               <span class="cmt">-- prevent negative inventory</span>
+<span class="cmt">-- Check rows affected; if 0 → retry</span>
+
+<span class="cmt">-- Pattern: Soft delete with audit trail</span>
+<span class="kw">ALTER TABLE</span> orders <span class="kw">ADD COLUMN</span> deleted_at <span class="fn">TIMESTAMPTZ</span>;
+<span class="kw">CREATE INDEX</span> idx_orders_active <span class="kw">ON</span> orders (user_id)
+  <span class="kw">WHERE</span> deleted_at <span class="kw">IS NULL</span>;           <span class="cmt">-- partial index: only active orders</span>
+
+<span class="cmt">-- Pattern: Polymorphic association (content table for comments)</span>
+<span class="kw">CREATE TABLE</span> comments (
+  id            <span class="fn">BIGSERIAL</span> <span class="kw">PRIMARY KEY</span>,
+  commentable_type <span class="fn">VARCHAR</span>(<span class="num">50</span>),      <span class="cmt">-- 'Post', 'Product', 'Video'</span>
+  commentable_id   <span class="fn">BIGINT</span>,
+  body          <span class="fn">TEXT</span>,
+  created_at    <span class="fn">TIMESTAMPTZ</span> <span class="kw">DEFAULT</span> now(),
+  <span class="kw">INDEX</span>         (commentable_type, commentable_id)
+);</pre>
+  </div>
+
+  <!-- Schema Designer Demo -->
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">Schema Designer</h2>
+  <p class="section-desc">Drag tables to arrange them. Click "Add Table" to create a new one. Click "Export SQL" to generate CREATE TABLE statements — useful for practicing design interviews.</p>
+
+  <div class="demo-section" id="demo-interview">
+    <div class="demo-header">
+      <h3>🎨 Schema Builder</h3>
+      <div class="demo-controls">
+        <button class="demo-btn" data-action="add-table">+ Add Table</button>
+        <button class="demo-btn" data-action="export-sql" style="background:var(--topic-color);color:#fff;border-color:var(--topic-color)">⬇ Export SQL</button>
+      </div>
+    </div>
+    <div class="demo-canvas-wrap" style="height:420px;align-items:flex-start;"></div>
+    <div class="demo-hint">Drag table headers to move. Yellow dashed lines = FK relationships. PK = primary key column (gold).</div>
+  </div>
+
+  <!-- SQL Export Modal -->
+  <div class="modal-overlay" id="sql-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Generated SQL</h3>
+        <button class="modal-close" onclick="document.getElementById('sql-modal').classList.remove('open')">✕</button>
+      </div>
+      <pre id="sql-output"></pre>
+    </div>
+  </div>
+
+  <!-- Anti-patterns -->
+  <div class="section-label">Anti-patterns</div>
+  <div class="antipatterns">
+    <div class="antipattern">
+      <h4>⚠ Designing without asking about access patterns</h4>
+      <p>Schema design is driven by how data is read and written. The same data can have radically different optimal schemas for a read-heavy vs write-heavy workload. Always ask before designing.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Storing everything in one giant table</h4>
+      <p>"God table" with 100+ columns, most NULL for any given row type. Discriminator columns ("type"), sparse columns, and huge row sizes kill performance and readability. Use inheritance or polymorphic patterns properly.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Forgetting created_at / updated_at on every table</h4>
+      <p>You will always eventually need to know when a row was created or modified for debugging, auditing, and incremental sync. Add these to every table from day one.</p>
+    </div>
+    <div class="antipattern">
+      <h4>⚠ Using VARCHAR(255) everywhere</h4>
+      <p>Picking 255 "because it fits" prevents the database from making good storage and statistics decisions. Use the actual expected max length. For names: VARCHAR(100). For emails: VARCHAR(254). For URLs: TEXT.</p>
+    </div>
+  </div>
+
+  <!-- Quiz -->
+  <div class="section-label">Quiz</div>
+  <div class="quiz-section">
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 1 of 3</div>
+      <div class="quiz-q-text">When designing a URL shortener schema, the primary performance bottleneck is usually:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="URL shorteners are not CPU-bound; the bottleneck is I/O for lookups."><span class="opt-letter">A</span>CPU usage for encoding/decoding</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Storage is cheap and not the primary bottleneck for URL shorteners."><span class="opt-letter">B</span>Disk storage capacity</div>
+        <div class="quiz-option" data-correct="true" data-explanation="URL shorteners see vastly more reads than writes (every short URL click is a read). The bottleneck is read throughput — solved with caching (Redis), read replicas, and efficient indexes."><span class="opt-letter">C</span>Read throughput — far more redirects than URL creations</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Write consistency is rarely the bottleneck; URL creation rate is low compared to redirects."><span class="opt-letter">D</span>Write consistency for URL creation</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 2 of 3</div>
+      <div class="quiz-q-text">For a chat application, which database property matters most for message ordering?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="High availability is important but doesn't ensure message ordering."><span class="opt-letter">A</span>High availability for 99.99% uptime</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Partition tolerance is required but doesn't address ordering."><span class="opt-letter">B</span>Partition tolerance across data centers</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Message ordering in a conversation must be consistent — users must see messages in the order they were sent. This requires strong ordering guarantees within a conversation shard."><span class="opt-letter">C</span>Strong ordering/consistency within a conversation</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Schema flexibility is irrelevant to message ordering."><span class="opt-letter">D</span>Schema flexibility for different message types</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-question">
+      <div class="quiz-q-num">Question 3 of 3</div>
+      <div class="quiz-q-text">Vertical partitioning (as opposed to horizontal/sharding) splits data by:</div>
+      <div class="quiz-options">
+        <div class="quiz-option" data-correct="false" data-explanation="Splitting by row ranges is horizontal partitioning (range sharding)."><span class="opt-letter">A</span>Row ranges (e.g., rows 1–1M on shard 1)</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Hashing the primary key is consistent/hash sharding — horizontal."><span class="opt-letter">B</span>Hash of the primary key value</div>
+        <div class="quiz-option" data-correct="true" data-explanation="Vertical partitioning splits a table by columns — e.g., keep frequently accessed columns in one table, large BLOBs/rarely accessed columns in another. Reduces row size and improves cache efficiency."><span class="opt-letter">C</span>Columns — frequently accessed columns in one table, large/rarely used in another</div>
+        <div class="quiz-option" data-correct="false" data-explanation="Splitting by time periods is a form of horizontal/range partitioning."><span class="opt-letter">D</span>Time periods (e.g., each month in a separate partition)</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <!-- Q&A -->
+  <div class="section-label">Interview Q&A</div>
+  <div class="qa-section">
+    <div class="qa-item">
+      <div class="qa-q">Walk me through designing a database for a URL shortener.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Clarify:</strong> Expected QPS? Link expiry? Analytics? Auth? ~1B links, 100K redirects/sec, analytics needed. <strong>Core schema:</strong> <code>links(id BIGINT PK, short_code CHAR(8) UNIQUE, long_url TEXT, user_id INT, created_at TIMESTAMPTZ, expires_at TIMESTAMPTZ, is_active BOOL)</code>. <code>clicks(id BIGINT, link_id INT, ip TEXT, user_agent TEXT, clicked_at TIMESTAMPTZ)</code> — partitioned by month. <strong>Index:</strong> unique index on short_code. Partial index WHERE is_active=true. <strong>Scale:</strong> Redis cache for short_code→long_url (LRU, 24h TTL handles 99% of traffic). Read replicas for remaining DB reads. Shard links by hash(short_code). Click analytics: batch-write to Kafka → aggregate to ClickHouse. <strong>Short code generation:</strong> base62(auto_increment) or hash, collision-check on insert.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What questions should you ask before designing a schema?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">1. <strong>Read/write ratio</strong>: 10:1? 1000:1? This drives caching and replica strategy. 2. <strong>Scale</strong>: rows per table, QPS, total data volume, growth rate. 3. <strong>Consistency requirements</strong>: can you tolerate stale reads? Eventually consistent analytics? Strongly consistent inventory? 4. <strong>Latency SLA</strong>: p99 under 10ms? Under 1s? 5. <strong>Access patterns</strong>: what are the top 3 most frequent queries? Will you filter by time range, user, status? 6. <strong>Schema stability</strong>: will structure change often? 7. <strong>Joins</strong>: what data is always read together? What's read independently? 8. <strong>Multi-tenancy</strong>: shared schema, separate schemas, or separate databases per tenant? 9. <strong>Compliance</strong>: PII fields, data residency requirements, audit logging?</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">How do you handle hot spots in a sharded database?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">Hot spots occur when a disproportionate fraction of traffic hits one shard. Solutions: (1) <strong>Shard key entropy</strong>: use UUID v4 or hash(user_id) instead of sequential IDs — distributes writes uniformly. (2) <strong>Compound shard keys</strong>: for a viral tweet — shard on (tweet_id % num_shards) with a random suffix to spread across sub-shards. (3) <strong>Caching hot rows</strong>: celebrity user profiles in Redis — DB only sees non-cached requests. (4) <strong>Read replicas for hot rows</strong>: route reads for popular data to multiple replicas. (5) <strong>Cell-based architecture</strong>: isolate celebrity accounts in dedicated cells. (6) <strong>Throttling</strong>: rate-limit writes to hot keys, batch counter updates (increment every N ms not every event). Twitter uses a "hot key" detector that auto-caches keys exceeding a threshold.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">What is the N+1 query problem and how do you detect and fix it?<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner">N+1: fetch N parent rows (1 query), then for each parent, execute a separate query to get its children (N queries). Total: N+1 queries. Example: fetch 100 blog posts, then for each post fetch its author — 101 queries instead of 1 JOIN. <strong>Detection:</strong> ORM debug logging (Rails bullet gem, Django debug toolbar, SQLAlchemy echo=True). Look for many nearly-identical queries. <strong>Fixes:</strong> (1) JOIN the tables in one query. (2) ORM eager loading (<code>includes</code> in ActiveRecord, <code>prefetch_related</code> in Django, <code>joinedload</code> in SQLAlchemy). (3) Batch: fetch all parent IDs, then <code>WHERE parent_id IN (ids)</code> — 2 queries instead of N+1. (4) DataLoader pattern (GraphQL) — batches per request frame. Always check total query count in dev, not just individual query speed.</div></div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Design the schema for a social media "likes" system at scale.<span class="qa-chevron">▾</span></div>
+      <div class="qa-a"><div class="qa-a-inner"><strong>Naive:</strong> <code>likes(user_id, post_id, created_at, PRIMARY KEY(user_id, post_id))</code>. Works to ~100M rows. Problems at scale: (1) like count query <code>SELECT COUNT(*) WHERE post_id=X</code> is slow on large tables. (2) Viral post = hot partition. <strong>Scalable approach:</strong> store <code>post_like_count</code> as a denormalized counter on posts, increment/decrement atomically (<code>UPDATE posts SET like_count = like_count + 1</code>). For exact user-post checks, use Redis Sets: <code>SISMEMBER post:{id}:likes {user_id}</code> — O(1). Persist asynchronously to DB for durability. For ultra-scale: use HyperLogLog for approximate counts (LinkedIn), exact counts in Redis, DB as persistent backup. Shard likes table by post_id (all likes for a post on one shard → fast count, but viral posts still hot — cap with caching).</div></div>
+    </div>
+  </div>
+
+  <!-- Further Reading -->
+  <div class="section-label">Further Reading</div>
+  <div class="reading-links">
+    <a class="reading-link" href="https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321" target="_blank">📚 Designing Data-Intensive Applications (Kleppmann)</a>
+    <a class="reading-link" href="https://systemdesign.one/" target="_blank">📖 System Design Interview Prep</a>
+    <a class="reading-link" href="https://github.com/donnemartin/system-design-primer" target="_blank">📖 System Design Primer (GitHub)</a>
+    <a class="reading-link" href="https://www.hellointerview.com/learn/system-design/deep-dives/sql-vs-nosql" target="_blank">📖 SQL vs NoSQL Deep Dive</a>
+  </div>
+
+  <!-- Topic Nav -->
+  <div class="topic-nav">
+    <a href="11-distributed-databases.html" class="topic-nav-link">
+      <div class="topic-nav-arrow">←</div>
+      <div><div class="topic-nav-label">Previous</div><div class="topic-nav-title">Distributed Databases</div></div>
+    </a>
+    <a href="../index.html" class="topic-nav-link next">
+      <div class="topic-nav-arrow">🏠</div>
+      <div><div class="topic-nav-label">Done!</div><div class="topic-nav-title">Back to Course Home</div></div>
+    </a>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/demos.js"></script>
+<script>
+// Wire modal close on overlay click
+document.getElementById('sql-modal')?.addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+// Wire export SQL to show in modal
+document.querySelector('[data-action="export-sql"]')?.addEventListener('click', function() {
+  // The initInterviewDemo function handles this — just in case it needs modal wiring
+  const modal = document.getElementById('sql-modal');
+  if (modal && !modal.classList.contains('open')) {
+    // demo will fill #sql-output; just open
+    setTimeout(() => modal.classList.add('open'), 50);
+  }
+});
+</script>
+</body>
+</html>
