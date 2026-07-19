@@ -86,10 +86,16 @@
   <div class="curriculum-label">The Curriculum</div>
   <h2 class="curriculum-title">Twelve carefully sequenced topics.</h2>
   <p class="curriculum-sub">Start at the top or jump to what you need. Every topic includes an animated demo, MCQ quiz, and interview Q&amp;A.</p>
+  <div class="level-legend">
+    <span><i style="background:var(--accent)"></i>Beginner</span>
+    <span><i style="background:var(--secondary)"></i>Intermediate</span>
+    <span><i style="background:var(--error)"></i>Advanced</span>
+    <span><i style="background:var(--primary)"></i>All Levels</span>
+  </div>
 
   <div class="course-grid">
 
-    <a href="topics/01-intro.html" class="course-card" style="--card-color:#0EA5E9">
+    <a href="topics/01-intro.html" class="course-card" style="--card-color:var(--accent)">
       <div class="card-num">01 &mdash; Beginner &middot; 25 min</div>
       <div class="card-title">Introduction to DBMS</div>
       <p class="card-desc">Architecture, data models, ACID overview, and why databases beat file systems for structured data.</p>
@@ -99,7 +105,7 @@
       </div>
     </a>
 
-    <a href="topics/02-relational-model.html" class="course-card" style="--card-color:#8B5CF6">
+    <a href="topics/02-relational-model.html" class="course-card" style="--card-color:var(--accent)">
       <div class="card-num">02 &mdash; Beginner &middot; 30 min</div>
       <div class="card-title">Relational Model</div>
       <p class="card-desc">Relations, keys, constraints, and relational algebra — with a live JOIN visualizer.</p>
@@ -109,7 +115,7 @@
       </div>
     </a>
 
-    <a href="topics/03-sql.html" class="course-card" style="--card-color:#10B981">
+    <a href="topics/03-sql.html" class="course-card" style="--card-color:var(--accent)">
       <div class="card-num">03 &mdash; Beginner &middot; 35 min</div>
       <div class="card-title">SQL Fundamentals</div>
       <p class="card-desc">SELECT, JOINs, subqueries, window functions, EXPLAIN plans — with a live query visualizer.</p>
@@ -119,7 +125,7 @@
       </div>
     </a>
 
-    <a href="topics/04-normalization.html" class="course-card" style="--card-color:#F59E0B">
+    <a href="topics/04-normalization.html" class="course-card" style="--card-color:var(--secondary)">
       <div class="card-num">04 &mdash; Intermediate &middot; 30 min</div>
       <div class="card-title">Normalization</div>
       <p class="card-desc">1NF through BCNF — animated step-by-step table decomposition to remove redundancy.</p>
@@ -129,7 +135,7 @@
       </div>
     </a>
 
-    <a href="topics/05-transactions.html" class="course-card" style="--card-color:#EF4444">
+    <a href="topics/05-transactions.html" class="course-card" style="--card-color:var(--secondary)">
       <div class="card-num">05 &mdash; Intermediate &middot; 40 min</div>
       <div class="card-title">Transactions &amp; ACID</div>
       <p class="card-desc">ACID properties, isolation levels, anomalies — with an interactive isolation timeline.</p>
@@ -139,7 +145,7 @@
       </div>
     </a>
 
-    <a href="topics/06-indexing.html" class="course-card" style="--card-color:#06B6D4">
+    <a href="topics/06-indexing.html" class="course-card" style="--card-color:var(--secondary)">
       <div class="card-num">06 &mdash; Intermediate &middot; 35 min</div>
       <div class="card-title">Indexing</div>
       <p class="card-desc">B+tree traversal, covering indexes, composite keys — watch the search path animate.</p>
@@ -149,7 +155,7 @@
       </div>
     </a>
 
-    <a href="topics/07-query-processing.html" class="course-card" style="--card-color:#3B82F6">
+    <a href="topics/07-query-processing.html" class="course-card" style="--card-color:var(--error)">
       <div class="card-num">07 &mdash; Advanced &middot; 35 min</div>
       <div class="card-title">Query Processing</div>
       <p class="card-desc">Parsing, planning, optimization, execution — animated query plan trees.</p>
@@ -159,7 +165,7 @@
       </div>
     </a>
 
-    <a href="topics/08-concurrency.html" class="course-card" style="--card-color:#EC4899">
+    <a href="topics/08-concurrency.html" class="course-card" style="--card-color:var(--error)">
       <div class="card-num">08 &mdash; Advanced &middot; 40 min</div>
       <div class="card-title">Concurrency Control</div>
       <p class="card-desc">2PL, MVCC, deadlock detection and resolution — with a live lock table.</p>
@@ -169,7 +175,7 @@
       </div>
     </a>
 
-    <a href="topics/09-storage-engines.html" class="course-card" style="--card-color:#F97316">
+    <a href="topics/09-storage-engines.html" class="course-card" style="--card-color:var(--error)">
       <div class="card-num">09 &mdash; Advanced &middot; 40 min</div>
       <div class="card-title">Storage Engines</div>
       <p class="card-desc">InnoDB internals, WAL, LSM trees, buffer pool — with page visualization.</p>
@@ -179,7 +185,7 @@
       </div>
     </a>
 
-    <a href="topics/10-nosql.html" class="course-card" style="--card-color:#84CC16">
+    <a href="topics/10-nosql.html" class="course-card" style="--card-color:var(--secondary)">
       <div class="card-num">10 &mdash; Intermediate &middot; 35 min</div>
       <div class="card-title">NoSQL Databases</div>
       <p class="card-desc">Document, column, KV, and graph stores — CAP theorem with a visual comparison.</p>
@@ -189,7 +195,7 @@
       </div>
     </a>
 
-    <a href="topics/11-distributed-databases.html" class="course-card" style="--card-color:#A855F7">
+    <a href="topics/11-distributed-databases.html" class="course-card" style="--card-color:var(--error)">
       <div class="card-num">11 &mdash; Advanced &middot; 45 min</div>
       <div class="card-title">Distributed Databases</div>
       <p class="card-desc">Raft consensus, sharding, 2PC, replication — with animated leader election.</p>
@@ -199,7 +205,7 @@
       </div>
     </a>
 
-    <a href="topics/12-interview-guide.html" class="course-card" style="--card-color:#14B8A6">
+    <a href="topics/12-interview-guide.html" class="course-card" style="--card-color:var(--primary)">
       <div class="card-num">12 &mdash; All Levels &middot; 50 min</div>
       <div class="card-title">Interview Guide</div>
       <p class="card-desc">Schema design patterns, system design Q&amp;A, and a drag-and-drop schema builder.</p>
