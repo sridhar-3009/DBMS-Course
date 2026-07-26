@@ -68,6 +68,8 @@ DBMS-Course/
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, project conventions, demo guidance, and pull request expectations.
+
 1. Fork and clone.
 2. Pick a topic page or open a GitHub Issue.
 3. Keep the style: vanilla JS only, Canvas 2D for demos, no npm.
